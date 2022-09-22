@@ -14,7 +14,7 @@ CREATE TABLE [dbo].[TABLENAME_HT](
 	[HID] [varchar](40) NOT NULL,
 	[SID] [varchar](40) NOT NULL,
 	[CODE] [varchar](40) NULL,
-	[NAME] [varchar](15) NULL,
+	[NAME] [varchar](40) NULL,
 	[REMARK] [varchar](max) NULL,
 	[UDT] [datetime] NULL,
 	[TRANS] [varchar](20) NULL,

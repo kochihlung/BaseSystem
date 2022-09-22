@@ -1,0 +1,348 @@
+﻿
+<div class="easyui-layout" fit="true">
+    <div data-options="region:'west',split:true" title="表單" style="width:15%;">
+        <div id="Forms"></div>
+    </div>
+
+    <div data-options="region:'center',split:true">
+        <div id="pnl">
+            <div class="easyui-layout" fit="true" id="L">
+                <div data-options="region:'north'" style="height:60%">
+                    <div class="easyui-layout" fit="true">
+                        <div data-options="region:'west'" style="width:60%">
+                            <div id="FormPnl" style="padding:10px;" fit="true"></div>
+                        </div>
+                        <div data-options="region:'center'" title="附檔">
+                            <div id="FormFile" style="padding: 10px;" fit="true"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div data-options="region:'center',title:'附檔',tools:'#FileButton'" style="padding:10px;">
+                    <div id="FileButton">
+                        <input type="file" id="file-uploader" data-target="file-uploader" accept=".pdf,image/*" multiple="multiple" hidden="true" />
+                        <a href="#" class="icon-add" onclick="$('#file-uploader').click()"></a>
+                    </div>
+                    <div id="FileList"></div>
+                </div>
+
+                <div data-options="region:'south',split:false" style="text-align:center;padding:2px;height:20%">
+                    <input id="SignRemark" />
+                    <a id="Save"></a>
+                    <a id="Clear"></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div data-options="region:'east',split:true" style="width:30%;">
+        <div id="step">
+            <div id="stepflow" style="width:100%; height:100%;"></div>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/javascript">
+    var R = API('V_FormSign/GetForms', { UID: UserInfo.SID });
+    var FormSID = '';
+    //console.log(R);
+    $.each(R, function (ind, obj) {
+        obj.text = obj.NAME + '{' + obj.CODE + '}';
+    })
+
+    $('#SignRemark').textbox({ label: '簽核意見', width: '100%', multiline: true, height: 108, labelPosition: 'top' }).css('background-color', 'blue');
+    $('#SignRemark').textbox('textbox').css('background-color', '#FFF0AC');
+
+    $('#Save').linkbutton({
+        text: '簽核',
+        iconCls: 'icon-ok',
+        width: 120,
+        onClick: function (obj) {
+
+            //取得附加檔案
+            let form = new FormData();
+            $.each(document.querySelector('#file-uploader').files, function (ind, obj) {
+                form.append('File' + ind, obj);
+            })
+
+            //取得資料訊息
+            var node = $('#Forms').tree('getSelected');
+            var _items = [];
+
+            var _FormData = { SID: node.SID, UID: UserInfo.SID, Remark: $('#SignRemark').textbox('getText') };
+            //加載form一同傳遞
+            form.append('FormData', JSON.stringify(_FormData));
+
+            var R = $.ajax({
+                url: './V_FormSign/Submit',
+                data: form,
+                type: 'Post',
+                contentType: false,
+                processData: false,
+                async: false
+            });
+
+            if (R.status == 200) {
+                //console.log(R);
+                $.messager.show({
+                    title: '系統提示',
+                    msg: node.NAME + '(' + R.responseJSON.CODE + ')簽核完成!',
+                    showType: 'slide',
+                    timeout: 2000,
+                    style: {
+                        right: '',
+                        top: document.body.scrollTop + document.documentElement.scrollTop,
+                        bottom: ''
+                    }
+                });
+                var _node = $('#MainMenu').tree('getSelected')
+                $('#FunCon').panel({ href: _node.url, title: _node.text, queryParams: { ModlingData: { MD: _node.MD, title: _node.text } } });
+
+            }
+            else {
+                ErrorMsg(R.responseText);
+            }
+            return;
+        }
+    });
+
+    //加載編輯視𥧥離開控件
+    $('#Clear').linkbutton({
+        text: '退件',
+        iconCls: 'icon-no',
+        width: 120,
+        onClick: function (obj) { $('#MainEdit').dialog('close'); }
+    });
+
+    $('#FormFile').tree({
+        fit: true, title: '附檔',
+        onClick: function (node) {
+            if (node.IsFile) {
+                window.open(node.url, '_blank');
+            }
+        },
+        formatter: function (node) {
+            var s = node.text;
+            if (node.children) {
+                var _color = 'blue';
+                if (node.children.length == 0) {
+                    _color = 'black';
+                }
+                s += '&nbsp;<span style=\'color:' + _color + '\'>(' + node.children.length + ')</span>';
+            }
+            return s;
+        }
+    });
+
+    $('#Forms').tree({
+        data: R,
+        onClick: function (node) {
+            var FormData = API('V_FormSign/GetFormData', { SID: node.SID });
+            FormData.M_ROUTEDTL_ID = node.M_ROUTEDTL_ID;
+            console.log(FormData);
+            $('#FormLayout').show();
+            //產生表單
+            var tmpHtml = '';
+            //產生Html
+            $.each(FormData.Items, function (ind, obj) {
+                var c = { field: obj.ColName, title: obj.text, width: obj.width, align: obj.align, hidden: obj.Show };
+                if (obj.UI == 'Combobox') {
+                    c.formatter = function (value, row, index) {
+                        var _Array = Enumerable.from(obj.Source).select().where(o => o.id == value).toArray();
+                        if (_Array.length == 0) {
+                            return value;
+                        } else {
+                            return Enumerable.from(obj.Source).select().where(o => o.id == value).toArray()[0].text;
+                        }
+                    };
+                }
+                //tmpCol.push(c);
+
+                tmpHtml += '<input id="' + node.CODE + obj.SID + '" name="' + node.CODE + obj.SID + '"/></p>';
+            })
+            $('#FormPnl').html(tmpHtml);
+            //加載UI控件
+            $.each(FormData.Items, function (ind, obj) {
+                switch (obj.CONTYPE) {
+                    case 'Number':
+                        $('#' + node.CODE + obj.SID).numberbox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true })
+                        $('#' + node.CODE + obj.SID).numberbox('setText', obj.Value)
+                        break;
+                    case 'Date':
+                        $('#' + node.CODE + obj.SID).datebox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true });
+                        $('#' + node.CODE + obj.SID).datebox('setText', obj.Value)
+                        break;
+                    case 'Time':
+                        $('#' + node.CODE + obj.SID).datetimebox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true })
+                        $('#' + node.CODE + obj.SID).datetimebox('setText', obj.Value)
+                        break;
+                    case 'Combobox':
+                        $('#' + node.CODE + obj.SID).combobox({
+                            label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true,
+                            valueField: 'id', textField: 'text', data: API('Public/GetDataSourceBySID', { SID: obj.SOURCE })
+                        })
+                        $('#' + node.CODE + obj.SID).combobox('select', obj.Value)
+                        //ConboboxList.push($('#' + node.CODE + obj.SID));  "filebox"
+                        break;
+                    default:
+                        $('#' + node.CODE + obj.SID).textbox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true })
+                        $('#' + node.CODE + obj.SID).textbox('setText', obj.Value)
+                        break;
+                }
+
+            })
+
+            const fileUploader = document.querySelector('#file-uploader');
+            var _fList = [];
+
+            fileUploader.addEventListener('change', (e) => {
+                $.each(e.target.files, function (ind, obj) {
+                    //$('#FileList').append(obj.name + '</p>')
+                    //console.log(obj)
+                    var _icon = '';
+                    if (obj.type == 'application/pdf') {
+                        _icon = 'icon-pdf';
+                    } else {
+                        _icon = 'icon-large-picture';
+                    }
+                    _fList.push({ id: ind, text: obj.name, iconCls: _icon, state: 'closed' })
+                })
+                $('#L').layout('panel', 'center').panel({ title: '附檔(共' + e.target.files.length + '個檔案!)' })
+                $('#FileList').tree('loadData', _fList);
+            });
+
+            //載入已附加檔案
+            var _HisFile = [];
+            _HisFile.push({ id: 'Create', text: '表單創建', iconCls: 'icon-folder', children: [] });
+
+            $.each(FormData.Route, function (ind, obj) {
+                _HisFile.push({ id: obj.SID, text: obj.OPER, iconCls: 'icon-folder', children: [] });
+            });
+            console.log(FormData.Files);
+            $.each(FormData.Files, function (ind, obj) {
+                var n = Enumerable.from(_HisFile).select().where(o => o.id == obj.M_ROUTEDTL_ID).toArray()[0];
+                n.children.push({ id: obj.SID, text: obj.NAME, IsFile: true, url: obj.url });
+            });
+            //console.log(_HisFile)
+            $('#FormFile').tree('loadData', _HisFile);
+
+
+
+            $('#pnl').panel({ title: node.NAME });
+            $('#pnl').panel('open');
+
+
+            $('#FileList').tree({});
+            $('#FileList').tree('loadData', []);
+            $('#L').layout('panel', 'center').panel({ title: '添加附檔' })
+            fileUploader.value = '';
+
+            $(window).resize();
+            $('#step').panel({ title: '簽核流程' });
+            $('#step').panel('open');
+            ShowStep(FormData);
+        }
+    });
+
+    $('#step').panel({ fit: true, closed: true, bodyCls: 'PnlBody' });
+    $('#pnl').panel({ fit: true, closed: true });
+
+    function ShowStep(node) {
+        var chartDom = document.getElementById('stepflow');
+        var myChart = echarts.init(chartDom);
+        var option;
+
+        var Fdata = [];
+        var Textdata = [];
+        var Ldata = [];
+        var _color = ['#BEBEBE', '#008F00', '#0072E3']
+        var Color = _color[0]
+        Fdata.push({ name: '創建表單', x: 0, y: 0, itemStyle: { color: Color } });
+
+        $.each(node.Route, function (ind, obj) {
+
+            //繪製節點
+            if (obj.SID == node.M_ROUTEDTL_ID) {
+                Color = _color[1];
+                Fdata.push({ name: ind + 1 + '.' + obj.OPER, x: 0, y: ind + 1, itemStyle: { color: Color } });
+                Color = _color[2];
+            } else {
+                Fdata.push({ name: ind + 1 + '.' + obj.OPER, x: 0, y: ind + 1, itemStyle: { color: Color } });
+            }
+
+            //繪製線條
+            if (ind == 0) {
+                Ldata.push({ source: '創建表單', target: ind + 1 + '.' + obj.OPER });
+            } else {
+                Ldata.push({ source: ind + '.' + node.Route[ind - 1].OPER, target: ind + 1 + '.' + node.Route[ind].OPER });
+            }
+
+            //繪製簽核備註
+            if (Enumerable.from(node.Sign).select().where(o => o.M_ROUTEDTL_ID == obj.SID).toArray().length > 0) {
+                var _Sign = Enumerable.from(node.Sign).select().where(o => o.M_ROUTEDTL_ID == obj.SID).toArray()[0];
+                Fdata.push({ name: _Sign.REMARK + ' \n\n ' + _Sign.UDT, x: 0, y: ind + 1, itemStyle: { opacity: 1, color: '#fff' }, symbolSize: 0.1, label: { position: 'right', fontSize: '14', distance: 50 } });
+            }
+
+        });
+        Fdata.push({ name: '結案', x: 0, y: node.Route.length + 1, itemStyle: { color: _color[2] } });
+        Ldata.push({ source: node.Route.length + '.' + node.Route[node.Route.length - 1].OPER, target: '結案' });
+        //console.log(Ldata);
+        option = {
+            backgroundColor: '#fff',
+            series: [
+                {
+                    left: 0,
+                    top: 50,
+                    type: 'graph',
+                    layout: 'none',
+                    symbolSize: 50,
+                    //coordinateSystem: 'cartesian2d',
+                    label: {
+                        show: true
+                    },
+                    edgeSymbol: ['circle', 'arrow'],
+                    edgeSymbolSize: [4, 10],
+                    edgeLabel: {
+                        fontSize: 20
+                    },
+                    data: Fdata,
+                    links: Ldata,
+                    lineStyle: {
+                        opacity: 1,
+                        width: 2
+                    }
+                }
+            ]
+        };
+        option && myChart.setOption(option);
+    }
+
+</script>
+<style>
+    .textColor {
+        background-color: #f3f3f3;
+    }
+
+    .PnlBody {
+        background-color: #f3f3f3;
+    }
+
+    .hc {
+        text-align: center;
+    }
+
+    .wizard .content {
+        background-color: #fff;
+    }
+
+    .wizard > .steps .current a, .wizard > .steps .current a:hover, .wizard > .steps .current a:active {
+        background-color: limegreen;
+    }
+
+    .wizard > .steps .done a, .wizard > .steps .done a:hover, .wizard > .steps .done a:active {
+        background-color: #e5dcdc;
+        color: #000;
+    }
+</style>

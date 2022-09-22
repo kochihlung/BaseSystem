@@ -1,0 +1,213 @@
+﻿
+<div id="Pnl_FrmList" class="easyui-navpanel">
+    <header>
+        <div class="m-toolbar">
+            <span id="FunName" class="m-title">表單簽核</span>
+            <a class="easyui-linkbutton" style="position: absolute; float: left; right: 5px" plain="true" outline="true" onclick="GoMenu()">返回</a>
+        </div>
+    </header>
+    <div id="dg"></div>
+</div>
+
+
+<div id="Pnl_Form" class="easyui-navpanel">
+    <header>
+        <div class="m-toolbar">
+            <span id="FormID" class="m-title">Detail</span>
+            <a class="easyui-linkbutton" style="position: absolute; float: left; right: 5px" plain="true" outline="true" onclick="GoFormList()">返回</a>
+        </div>
+    </header>
+    <div class="easyui-tabs" data-options="fit:true,border:false,pill:true,justified:true,tabWidth:80,tabHeight:35">
+        <div title="表單資料">
+            <div id="Frm" style="padding:5px 10px 10px 10px"></div>
+        </div>
+        <div title="附檔" style="">
+            <div id="FormFile"></div>
+        </div>
+        @*<div title="簽核記錄" style="padding:10px">
+            待有合適的UI再新增
+        </div>*@
+    </div>
+    <footer style="text-align:center">
+        <input id="SignRemark"/>
+       <a id="Submit"></a>
+    </footer>
+
+</div>
+
+
+<script>
+
+
+    var datas = API('V_FormSign/GetForms', { UID: UserInfo.SID })
+    console.log(datas)
+    $('#dg').datalist({
+        data: datas,
+        fit: true,
+        textField: 'CODE',
+        groupField: 'NAME',
+        textFormatter: function (value) {
+            return '<a href="javascript:void(0)" class="datalist-link">' + value + '</a>';
+        },
+        onClickRow: function (index, row) {
+            $('#FormID').html(row.CODE);
+            GoForm();
+
+            var FormData = API('V_FormSign/GetFormData', { SID: row.SID });
+            FormData.M_ROUTEDTL_ID = row.M_ROUTEDTL_ID;
+            console.log(FormData);
+
+            $('#FormLayout').show();
+            //產生表單
+            var tmpHtml = '';
+            //產生Html
+            $.each(FormData.Items, function (ind, obj) {
+                var c = { field: obj.ColName, title: obj.text, width: obj.width, align: obj.align, hidden: obj.Show };
+                if (obj.UI == 'Combobox') {
+                    c.formatter = function (value, row, index) {
+                        var _Array = Enumerable.from(obj.Source).select().where(o => o.id == value).toArray();
+                        if (_Array.length == 0) {
+                            return value;
+                        } else {
+                            return Enumerable.from(obj.Source).select().where(o => o.id == value).toArray()[0].text;
+                        }
+                    };
+                }
+                //tmpCol.push(c);
+
+                tmpHtml += '<input id="' + row.CODE + obj.SID + '" name="' + row.CODE + obj.SID + '"/></p>';
+            })
+            $('#Frm').html(tmpHtml);
+            //加載UI控件
+            $.each(FormData.Items, function (ind, obj) {
+                switch (obj.CONTYPE) {
+                    case 'Number':
+                        $('#' + row.CODE + obj.SID).numberbox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true })
+                        $('#' + row.CODE + obj.SID).numberbox('setText', obj.Value)
+                        break;
+                    case 'Date':
+                        $('#' + row.CODE + obj.SID).datebox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true });
+                        $('#' + row.CODE + obj.SID).datebox('setText', obj.Value)
+                        break;
+                    case 'Time':
+                        $('#' + row.CODE + obj.SID).datetimebox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true })
+                        $('#' + row.CODE + obj.SID).datetimebox('setText', obj.Value)
+                        break;
+                    case 'Combobox':
+                        $('#' + row.CODE + obj.SID).combobox({
+                            label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true,
+                            valueField: 'id', textField: 'text', data: API('Public/GetDataSourceBySID', { SID: obj.SOURCE })
+                        })
+                        $('#' + row.CODE + obj.SID).combobox('select', obj.Value)
+                        //ConboboxList.push($('#' + node.CODE + obj.SID));  "filebox"
+                        break;
+                    default:
+                        $('#' + row.CODE + obj.SID).textbox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true })
+                        $('#' + row.CODE + obj.SID).textbox('setText', obj.Value)
+                        break;
+                }
+            })
+
+            //載入已附加檔案
+            var _HisFile = [];
+            _HisFile.push({ id: 'Create', text: '表單創建', iconCls: 'icon-folder', children: [] });
+
+            $.each(FormData.Route, function (ind, obj) {
+                _HisFile.push({ id: obj.SID, text: obj.OPER, iconCls: 'icon-folder', children: [] });
+            });
+            console.log(FormData.Files);
+            $.each(FormData.Files, function (ind, obj) {
+                var n = Enumerable.from(_HisFile).select().where(o => o.id == obj.M_ROUTEDTL_ID).toArray()[0];
+                n.children.push({ id: obj.SID, text: obj.NAME, IsFile: true, url: obj.url });
+            });
+            //console.log(_HisFile)
+            $('#FormFile').tree('loadData', _HisFile);
+        }
+    })
+
+
+    $('#FormFile').tree({
+        fit: true, title: '附檔',
+        onClick: function (node) {
+            if (node.IsFile) {
+                window.open(node.url, '_blank');
+            }
+        },
+        formatter: function (node) {
+            var s = node.text;
+            if (node.children) {
+                var _color = 'blue';
+                if (node.children.length == 0) {
+                    _color = 'black';
+                }
+                s += '&nbsp;<span style=\'color:' + _color + '\'>(' + node.children.length + ')</span>';
+            }
+            return s;
+        }
+    });
+
+    $('#Submit').linkbutton({
+        text: '簽核',
+        iconCls: 'icon-ok',
+        width: 120,
+        onClick: function (obj) {
+            //取得資料訊息
+            var node = $('#dg').datalist('getSelected');
+            var _items = [];
+
+            let form = new FormData();
+            var _FormData = { SID: node.SID, UID: UserInfo.SID, Remark: $('#SignRemark').textbox('getText') };
+            //加載form一同傳遞
+            form.append('FormData', JSON.stringify(_FormData));
+            
+            var R = $.ajax({
+                url: './V_FormSign/Submit',
+                data: form,
+                type: 'Post',
+                contentType: false,
+                processData: false,
+                async: false
+            });
+
+            if (R.status == 200) {
+                //console.log(R);
+                $.messager.show({
+                    title: '系統提示',
+                    //msg: node.NAME + '(' + R.responseJSON.CODE + ')簽核完成!',
+                    msg: '簽核完成!',
+                    showType: 'slide',
+                    timeout: 2000,
+                    style: {
+                        right: '',
+                        top: document.body.scrollTop + document.documentElement.scrollTop,
+                        bottom: ''
+                    }
+                });
+                GoFormList();
+            }
+            else {
+                ErrorMsg(R.responseText);
+            }
+            return;
+        }
+    });
+
+    $('#SignRemark').textbox({ label: '簽核意見', width: '100%', multiline: true, height: 108, labelPosition: 'top' }).css('background-color', 'blue');
+    $('#SignRemark').textbox('textbox').css('background-color', '#FFF0AC');
+
+    function GoForm() {
+        $.mobile.nav('#Pnl_FrmList', '#Pnl_Form', 'slide', 'right');
+    }
+
+    function GoFormList() {
+        $.mobile.nav('#Pnl_Form', '#Pnl_FrmList', 'slide', 'right');
+        $('#dg').datalist('loadData', API('V_FormSign/GetForms', { UID: UserInfo.SID }));
+    }
+</script>
+<style>
+    .m-list li {
+        font-size: 28px;
+        height: 36px;
+        line-height: 36px;
+    }
+</style>

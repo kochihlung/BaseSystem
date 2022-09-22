@@ -1,0 +1,273 @@
+﻿<table id="ModlingTable"></table>
+<div id="dgTools">
+    <a id="add"></a>
+    <a id="edit"></a>
+    <label>於資料列上擊點滑鼠右鍵可刪除其資料</label>
+</div>
+
+<div id="ModlingForm" style="width:500px;height:600px">
+    <div class="easyui-layout" fit="true">
+        <div data-options="region:'center'" style="height:520px">
+            <div id="FrmP" class="easyui-panel" fit="true" style="padding:10px">
+
+            </div>
+        </div>
+
+        <div data-options="region:'south',split:false" style="text-align:center;padding:2px;height:36px">
+            <a id="save"></a>
+            <a id="exit"></a>
+
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    //特定需輸入Admin Token的介面
+    //AdminToken();
+
+    console.log(UserToken);
+
+    var FunPage = $('#FunCon').panel('options');
+    var Modling = FunPage['queryParams']['ModlingData'];
+
+    var MDCon = API('UserManage/GetModlingSetup')
+
+    var dgColumn = [];
+    var FrmHtml = '';
+
+
+    $.each(MDCon.Col, function (ind, obj) {
+        var c = { field: obj.ColName, title: obj.text, width: obj.width, align: obj.align };
+
+        if (obj.IsModling) {
+            c.formatter = function (value, row, index) {
+                return Enumerable.from(obj.Source).select().where(o => o.id == value).toArray()[0].text;
+            };
+        }
+
+        if (obj.ColName == 'PWD') {
+            c.formatter = function (value, row, index) { return '●●●●●●●●●'}
+        }
+
+        dgColumn.push(c);
+        FrmHtml += '<input id="' + obj.ColName + '" name="' + obj.ColName + '" /></p>';
+    });
+
+    $('#FrmP').html(FrmHtml);
+    $.each(MDCon.Col, function (ind, obj) {
+        switch (obj.UI) {
+            case 'Number':
+                $('#' + obj.ColName).numberbox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                break;
+            case 'Date':
+                $('#' + obj.ColName).datebox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                break;
+            case 'Time':
+                $('#' + obj.ColName).datetimebox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                break;
+            case 'Combobox':
+                console.log(obj)
+                $('#' + obj.ColName).combobox({
+                    label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly,
+                    valueField: 'id', textField: 'text', data: obj.Source
+                })
+                break;
+            default:
+                $('#' + obj.ColName).textbox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                break;
+        }
+    });
+
+    $('#DATAS').textbox({ prompt: '以半型逗號分隔資料，以冒號分隔id及text。例：id01:text01,id02:text02' });
+
+    $('#ModlingTable').datagrid({
+        fit: true,
+        columns: [dgColumn],
+        toolbar: '#dgTools',
+        singleSelect: true,
+        onDblClickRow: function (ind, row) {
+            OpenModlingPanel('修改', 'UpdateModlingDatas')
+            FrmloadData(row);
+        },
+        onRowContextMenu: function (e, ind, row) {
+            e.preventDefault()
+            var d = '';
+            var data = [];
+            for (var key in row) {
+                if (Object.prototype.hasOwnProperty.call(row, key)) { // filter
+                    d += key + ':' + row[key] + '<br/>'
+                    data.push({ Name: key, Value: row[key] });
+                }
+            }
+
+            $.messager.confirm('確認視窗', '確認刪除該筆資料?<br/><br/><br/>' + d, function (r) {
+                if (r) {
+                    var R = API('UserManage/DeleteModlingDatas', { Name: Modling.MD, data: JSON.stringify(data) });
+                    dgloadData();//加載dg
+                    $.messager.show({
+                        title: '系統提示',
+                        msg: '刪除成功',
+                        showType: 'slide',
+                        style: {
+                            right: '',
+                            top: document.body.scrollTop + document.documentElement.scrollTop,
+                            bottom: ''
+                        }
+                    });
+                }
+            });
+        }
+    });
+    dgloadData();
+    $('#add').linkbutton({
+        text: '新增',
+        iconCls: 'icon-add',
+        onClick: function (obj) { OpenModlingPanel('新增', 'CreateModlingDatas') }
+    });
+    $('#edit').linkbutton({
+        text: '修改',
+        iconCls: 'icon-edit',
+        onClick: function (obj) { OpenModlingPanel('修改', 'UpdateModlingDatas') }
+    });
+
+
+
+    $('#save').linkbutton({
+        text: '保存',
+        iconCls: 'icon-save',
+        width: 120,
+        onClick: function (obj) {
+
+            var R = API('UserManage/' + $('#ModlingForm').dialog('options').ActionType, { Name: Modling.MD, data: GetDatas() })
+            console.log(R);
+            FrmloadData(R)//加載Form
+            dgloadData();//加載dg
+
+            var Result;
+
+            if (R != null) {
+                Result = '成功';
+            }
+            else {
+                Result = '失敗';
+            }
+
+            $.messager.show({
+                title: '系統提示',
+                msg: $('#ModlingForm').dialog('options').title + Result,
+                showType: 'slide',
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+    });
+
+
+    $('#exit').linkbutton({
+        text: '離開',
+        iconCls: 'icon-exit',
+        width: 120,
+        onClick: function (obj) { $('#ModlingForm').dialog('close'); }
+    });
+
+    function OpenModlingPanel(tit, action) {
+
+        $('#ModlingForm').dialog({
+            title: tit,
+            ActionType: action
+        });
+
+        $('#ModlingForm').panel('open');
+
+        if (tit == '新增') {
+            FrmClearData()
+        }
+
+    }
+
+    function CloseModlingPanel() {
+
+        $('#ModlingForm').dialog('close');
+
+    }
+
+    function GetDatas() {
+        var FrmDatas = [];
+        $.each(MDCon.Col, function (ind, obj) {
+            switch (obj.UI) {
+                case 'Number':
+                    FrmDatas.push({ Name: obj.ColName, Value: $('#' + obj.ColName).numberbox('getText') });
+                    break;
+                case 'Date':
+                    FrmDatas.push({ Name: obj.ColName, Value: $('#' + obj.ColName).textbox('getText') });
+                    break;
+                case 'Time':
+                    FrmDatas.push({ Name: obj.ColName, Value: $('#' + obj.ColName).textbox('getText') });
+                    break;
+                case 'Combobox':
+                    FrmDatas.push({ Name: obj.ColName, Value: $('#' + obj.ColName).combobox('getValue') });
+                    break;
+                default:
+                    FrmDatas.push({ Name: obj.ColName, Value: $('#' + obj.ColName).textbox('getText') });
+                    break;
+            }
+        });
+
+
+        //var Datas = { Name: MDCon.Name, data: [] };
+        return JSON.stringify(FrmDatas);
+    }
+
+    function FrmloadData(row) {
+        $('#TABLENAME').combobox('setValue', row.TABLENAME);
+        for (var key in row) {
+            //取Modling頁面的項目，再將傳回的資料進行轉換(Combobox)並加載
+            if (Enumerable.from(MDCon.Col).select().where(o => o.ColName == key).toArray().length > 0) {
+                if (Enumerable.from(MDCon.Col).select().where(o => o.ColName == key).toArray()[0].IsModling) {
+                    var _Source = Enumerable.from(MDCon.Col).select().where(o => o.ColName == key).toArray()[0].Source;
+                    var _text = Enumerable.from(_Source).select().where(o => o.id == row[key]).toArray()[0].text;
+                    $('#' + key).textbox('setText', _text)
+                }
+                else {
+                    $('#' + key).textbox('setText', row[key])
+                }
+
+            }
+        }
+    }
+
+    function FrmClearData() {
+
+        $.each(MDCon.Col, function (ind, obj) {
+            switch (obj.UI) {
+                case 'Number':
+                    $('#' + obj.ColName).numberbox('setText', '');
+                    break;
+                case 'Date':
+                    $('#' + obj.ColName).textbox('setText', '');
+                    break;
+                case 'Time':
+                    $('#' + obj.ColName).textbox('setText', '');
+                    break;
+                case 'Combobox':
+                    $('#' + obj.ColName).combobox('setText', '');
+                    break;
+                default:
+                    $('#' + obj.ColName).textbox('setText', '');
+                    break;
+            }
+        });
+    }
+
+    function dgloadData() {
+        var Datas = API('UserManage/GetDatas', { Name: Modling.MD });
+        $('#ModlingTable').datagrid('loadData', Datas);
+    }
+
+</script>
+

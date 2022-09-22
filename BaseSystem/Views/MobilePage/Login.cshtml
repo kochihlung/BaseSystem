@@ -1,0 +1,195 @@
+﻿
+@{
+    ViewBag.Title = "View";
+    Layout = "~/Views/MobilePage/mb_Base.cshtml";
+}
+
+<style>
+    .panel-header {
+        text-align: center;
+    }
+</style>
+<div id="Pnl_login" class="easyui-navpanel">
+    <header>
+        <div class="m-toolbar">
+            <span class="m-title">Instek E-Flow</span>
+        </div>
+    </header>
+    <div style="margin:20px auto;width:250px;height:150px;border-radius:100px;overflow:hidden">
+        <img src="~/img/INSTEK-blue.png" style="margin:0;width:100%;height:100%;" />
+    </div>
+    <div style="padding:0 20px">
+        <div style="margin-bottom:10px">
+            <input id="UID" class="easyui-textbox" data-options="prompt:'登入帳號',iconCls:'icon-man'" style="width:100%;height:38px">
+        </div>
+        <div>
+            <input id="Pwd" class="easyui-passwordbox" data-options="prompt:'密碼'" style="width:100%;height:38px">
+        </div>
+        <div style="text-align:center;margin-top:30px">
+            <a id="btn_SignIn" class="easyui-linkbutton" style="width:100%;height:40px"><span style="font-size:16px">登入</span></a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .MenuButton {
+        margin: 15px;
+        width: 80px;
+        height: 70px;
+        text-align: center
+    }
+
+    .btn {
+        width: 20vw;
+        height: 20vw;
+        background-color: #f3f3f3;
+        border: solid;
+        border-width: 1px;
+        border-color: #d3d3d3;
+        margin: 0vw 5vw 5vw 5vw;
+        border-radius: 5vw;
+        text-align: center;
+        position: relative;
+        line-height: normal;
+        float: left;
+    }
+
+    .btnIcon {
+        width: 10vw;
+        height: 10vw;
+        margin-left: 5vw;
+        margin-bottom: 2vw;
+        margin-top: 1vw;
+        display: block;
+    }
+
+    .btnText {
+        width: 20vw;
+        height: 1vw;
+        overflow: hidden;
+    }
+</style>
+
+<div id="Pnl_Menu" class="easyui-navpanel" style="padding: 10px; line-height:6">
+    <header>
+        <div class="m-toolbar">
+            <span class="m-title">功能選單</span>
+        </div>
+    </header>
+    <div id="MenuButton" style="padding-left:2vw;">
+
+    </div>
+</div>
+
+<div id="Pnl_Fun" class="easyui-navpanel">
+</div>
+
+
+<script>
+    const Position = {};
+    var lsBtn = [
+        { text: '表單簽核', url: 'SignForm', icon: 'Sign' },
+        { text: '考勤記錄', url: 'AttRec', icon: 'card' },
+        { text: '表單簽核', url: 'SignForm', icon: 'pencil' }
+    ];
+    var HtmlStr = '';
+
+    $(function () {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(SetPosition);
+        } else {
+            Position.lat = 0;
+            Position.lon = 0;
+        }
+        
+        //自動登入
+            //$('#UID').textbox('setText', '1'),
+            //$('#Pwd').passwordbox('setValue', '1'),
+            //$('#btn_SignIn').click();
+
+      
+
+      
+        $.each(lsBtn, function (ind, obj) {
+            HtmlStr += ' <div class="btn" onclick="GoFun(\'' + obj.url + '\')">' +
+                '<div> <img class="btnIcon" src="Scripts/EasyUI/themes/icons/' + obj.icon + '.png" /></div>' +
+                '<label class="btnText">' + obj.text + '</label> ' +
+                '</div>';
+        });
+        $('#MenuButton').html(HtmlStr);
+    })
+
+    function SetPosition(obj) {
+        Position.lat = obj.coords.latitude;
+        Position.lon = obj.coords.longitude;
+    }
+
+    $('#UID').textbox({
+    }).textbox('textbox').bind('keydown', function (e) {
+        if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+            $('#Pwd').textbox('textbox').focus();
+        }
+    });
+
+    $('#Pwd').passwordbox({
+    }).textbox('textbox').bind('keydown', function (e) {
+        if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+            $('#btn_SignIn').click();
+        }
+    });
+
+    $('#btn_SignIn').linkbutton({
+        onClick: function () {
+            var _U = {
+                UID: $('#UID').textbox('getText'),
+                PWD: $('#Pwd').passwordbox('getValue'),
+                lat: Position.lat,
+                lon: Position.lon
+            }
+            console.log(_U)
+            var R = API('UserManage/SignIn', _U);
+            if (!R) { return; }
+            //UserInfo = R;
+            $('#UserInfo').textbox('setText', R.NAME);
+            UserToken = R.TOKEN;
+            UserInfo = R;
+            $.mobile.nav('#Pnl_login', '#Pnl_Menu', 'slide', 'left');
+        }
+    });
+
+    function GoFun(url) {
+
+        $.mobile.nav('#Pnl_Menu', '#Pnl_Fun', 'slide', 'left');
+        $('#Pnl_Fun').navpanel({ fit: true, href: '/MobilePage/' + url })
+    }
+    function GoMenu() {
+        $.mobile.nav('#Pnl_Fun', '#Pnl_Menu', 'slide', 'right');
+    }
+</script>
+
+<style scoped>
+    .panel-header {
+        height: 42px;
+        font-size: 24px;
+    }
+
+    #list .list-image {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        margin-right: 5px;
+        float: left;
+    }
+
+    #list .list-header {
+        font-size: 24px;
+        font-weight: bold;
+        line-height: 36px;
+    }
+
+    #list .list-content {
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+</style>
+

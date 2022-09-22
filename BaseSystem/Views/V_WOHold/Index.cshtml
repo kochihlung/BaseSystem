@@ -1,0 +1,257 @@
+﻿<div id="_layout" class="easyui-layout" fit="true">
+    <div data-options="region:'west'" style="width:300px">
+        <table id="WO_Main"></table>
+        <div id="WO_Main_tools">
+            <div class="easyui-accordion">
+                <div title="查詢條件" data-options="iconCls:'icon-search'" style="overflow:auto;padding:10px;">
+                    <input id="S_WONbr" /></p>
+                    <label style="margin-right:18px">工單狀態</label>
+                    <input type="checkbox" id="S_Create" value="1" />Created
+                    <input type="checkbox" id="S_WIP" value="1" />WIP
+                    <input type="checkbox" id="S_Complete" value="1" />Complete<br />
+                    <input type="checkbox" id="S_Close" value="1" style="margin-left:82px" />Close</p>
+                    <input id="S_PROD" />
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+    <div data-options="region:'center'">
+
+        <div style=" width: 500px; float: left; height: 96%">
+            <table id="HoldControl"></table>
+            <div id="HCTB">
+                <label style="color:red">於資料列上擊點滑鼠右鍵可解鎖其資料</label>
+            </div>
+
+            <div id="toolbar">
+                <a id="Hold">新增鎖定</a>
+                <a id="UnHold">全部解鎖</a>
+            </div>
+        </div>
+        <div id="Windows"></div>
+    </div>
+
+</div>
+
+<script type="text/javascript">
+
+    $(function () {
+        LoadWOList();
+    });
+
+
+    var dg_HC = API('V_WOHold/GetHoldControl', { SID: '' });
+    dg_HC.footer = '#toolbar';
+    dg_HC.toolbar = '#HCTB';
+
+
+    console.log(dg_HC);
+
+    dg_HC.columns[0][5].styler = function (value, row, index) {
+        if (value == 'Hold') {
+            return 'background-color:#CE0000;color:#FFF';
+        } else {
+            return 'background-color:#79FF79;color:#000';
+        }
+    }
+
+    dg_HC.onRowContextMenu = function (e, ind, row) {
+        e.preventDefault();
+        $.messager.confirm('確認視窗', '確定解鎖?<br/><br/><br/>', function (r) {
+            if (r) {
+                var R = API('V_WOHold/UnHold', { SID: row.SID, UID: UserInfo.SID });
+                if (!R) { return; }
+
+                $('#HoldControl').datagrid('updateRow', { index: ind, row: R })
+
+                $.messager.show({
+                    title: '系統提示',
+                    msg: '解鎖成功',
+                    showType: 'slide',
+                    style: {
+                        right: '',
+                        top: document.body.scrollTop + document.documentElement.scrollTop,
+                        bottom: ''
+                    }
+                });
+            }
+        });
+    }
+
+    $('#HoldControl').datagrid(dg_HC);
+
+
+    function LoadWOList() {
+
+        var _StatusStr = ''
+
+        if (_Status.length == 0) {
+            _StatusStr = '';
+        } else {
+            _StatusStr = "'" + _Status.join("','") + "'";
+        }
+
+        var QueryData = {
+            WO: $('#S_WONbr').textbox('getText'),
+            Status: _StatusStr,
+            Prod: $('#S_PROD').combobox('getValue')
+        }
+        console.log(QueryData)
+        var R = API('V_WOManage/LoadWoList', QueryData);
+        $('#WO_Main').datagrid('loadData', R);
+    }
+
+    var _Status = [];
+
+    $("#S_Create").click(function () {
+        if ($(this).prop('checked')) {
+            _Status.push('Create');
+        } else {
+            _Status.splice($.inArray('Create', _Status), 1);
+        }
+        LoadWOList();
+    })
+    $("#S_WIP").click(function () {
+        if ($(this).prop('checked')) {
+            _Status.push('WIP');
+        } else {
+            _Status.splice($.inArray('WIP', _Status), 1);
+        }
+        LoadWOList();
+    })
+    $("#S_Complete").click(function () {
+        if ($(this).prop('checked')) {
+            _Status.push('Complete');
+        } else {
+            _Status.splice($.inArray('Complete', _Status), 1);
+        }
+        LoadWOList();
+    })
+    $("#S_Close").click(function () {
+        if ($(this).prop('checked')) {
+            _Status.push('Close');
+        } else {
+            _Status.splice($.inArray('Close', _Status), 1);
+        }
+        LoadWOList();
+    })
+
+    $('#S_WONbr').textbox({
+        label: '工單號',
+        width: '100%',
+        prompt: 'Enter鍵進行糢糊查詢'
+    }).textbox('textbox').bind('keydown', function (e) {
+        if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+            LoadWOList();
+        }
+    });
+
+    $('#S_PROD').combobox({
+        label: '產品',
+        width: '100%',
+        valueField: 'id',
+        textField: 'text',
+        data: API('Public/GetDataSource', { Code: 'Prod' }),
+        onChange: function (n, o) {
+            LoadWOList();
+        }
+    })
+
+    $('#WO_Main').datagrid({
+        fit: true,
+        columns: [[
+            { field: 'SID', title: 'SID', hidden: true },
+            { field: 'CODE', title: '工單號', width: '50%' },
+            { field: 'Prod', title: '產品', width: '50%' }
+        ]],
+        toolbar: '#WO_Main_tools',
+        singleSelect: true,
+        onClickRow: function (ind, row) {
+            var dg_HC = API('V_WOHold/GetHoldControl', { SID: row.SID });
+            $('#HoldControl').datagrid('loadData', dg_HC.data);
+        }
+    });
+
+    $('#Hold').linkbutton({
+        iconCls: 'icon-lock',
+        //plain: true,
+        width: '100px',
+        onClick: function (obj) {
+            if ($('#WO_Main').datagrid('getSelected') == null) {
+                ErrorMsg('請選擇欲鎖定工單!')
+                return;
+            }
+
+            $('#Windows').html('<div id="HoldWindow" style="padding:10px"><input id="HoldReson" /></p><input id="HoldRemark" /></p><a id="HoldBtn">鎖定</a></div>');
+
+            $('#HoldWindow').window({
+                width: '300px',
+                title: '工單鎖定',
+                //height:'450px',
+                collapsible: false,
+                minimizable: false,
+                maximizable: false,
+                modal: true,
+                closed: true,
+                onClose: function () {
+                    $('#Windows').html('');
+                }
+            });
+
+            $('#HoldBtn').linkbutton({
+                iconCls: 'icon-lock',
+                //plain: true,
+                width: '100%',
+                onClick: function (obj) {
+
+                    if (!CheckComboboxItem([$('#HoldReson')])) { return; }
+
+                    var Info = {
+                        UID: UserInfo.SID,
+                        SID: $('#WO_Main').datagrid('getSelected').SID,
+                        Reson: $('#HoldReson').combobox('getValue'),
+                        Remark: $('#HoldRemark').textbox('getText')
+                    }
+
+                    var Result = API('V_WOHold/Hold', Info)
+                    console.log(Result);
+                    $('#HoldControl').datagrid('appendRow', Result);
+
+                }
+            });
+            $('#HoldReson').combobox({
+                label: '鎖定原因',
+                width: '100%',
+                valueField: 'id',
+                textField: 'text',
+                data: API('V_WOHold/GetHoldReson', {})
+            })
+
+            $('#HoldRemark').textbox({
+                label: '備註',
+                width: '100%',
+                readonly: false,
+                multiline: true,
+                height: 150
+            })
+
+            $('#HoldWindow').window('open');
+        }
+    });
+
+    $('#UnHold').linkbutton({
+        iconCls: 'icon-Unlock',
+        //plain: true,
+        width: '100px',
+        onClick: function (obj) {
+            var row = $('#WO_Main').datagrid('getSelected');
+            var R = API('V_WOHold/UnHoldAll', { SID: row.SID, UID: UserInfo.SID });
+            if (!R) { return; }
+            $('#HoldControl').datagrid('loadData', R);
+            Msg('解鎖完成');
+        }
+    });
+
+</script>

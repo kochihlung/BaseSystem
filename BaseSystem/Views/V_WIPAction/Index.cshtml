@@ -1,0 +1,196 @@
+﻿<div id="_layout" class="easyui-layout" fit="true">
+    <div id="" data-options="region:'west'" width="20%" split="true">
+        <div class="easyui-layout" fit="true">
+            <div data-options="region:'north'" height="auto" title="生產資料" style="padding:10px" collapsible="false">
+                <div>
+                    <inpug id="Lot" />
+                    <inpug id="Eqp" />
+                </div>
+                </p>
+                <div>
+                    <a id="Submit">確認</a>
+                    <a id="Clear">清除</a>
+                </div>
+            </div>
+
+
+            <div data-options="region:'center'" title="工作指示" collapsible="true">
+                <div id="WorkCmd"></div>
+            </div>
+
+
+
+        </div>
+    </div>
+
+    <div data-options="region:'center'" split="true">
+        <div class="easyui-panel" title="WIP資訊" fit="true">
+            <div class="easyui-layout" fit="true">
+                <div data-options="region:'north'" height="auto" title="基礎資訊" style="padding:10px;height:55%" collapsible="false">
+                    <div id="BaseInfo">
+                        <inpug id="CODE" />
+                        <inpug id="WO" />
+                        <inpug id="PROD" />
+                        <inpug id="ROUTE" />
+                        <inpug id="OPER" />
+                        <inpug id="USERNAME" />
+                    </div>
+                </div>
+                <div data-options="region:'center'">
+                    <ul id="ActionHis" class="easyui-datalist" title="操作記錄" lines="true" fit="true">
+                    </ul>
+                </div>
+                <div data-options="region:'south'" style="height:4%">
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div data-options="region:'east'" style="width:50%">
+
+    </div>
+
+</div>
+
+<script type="text/javascript">
+
+
+
+    function InsertHis(HisStr) {
+        $('#ActionHis').datalist('appendRow', { value: 'val', text: HisStr });
+        $('#ActionHis').datalist('selectRow', $('#ActionHis').datalist('getRows').length -1);
+    }
+
+    function ClearData() {
+        $('#Submit').linkbutton({ disabled: true });
+        $('#Lot').textbox('setText', '');
+        $('#Eqp').combogrid('setText', '');
+        $('#CODE').textbox('setText', '');
+        $('#WO').textbox('setText', '');
+        $('#PROD').textbox('setText', '');
+        $('#ROUTE').textbox('setText', '');
+        $('#OPER').textbox('setText', '');
+        $('#USERNAME').textbox('setText', '');
+
+        $('#ActionHis').datalist('loadData', []);
+    }
+        
+    function LoadData(obj) {
+        
+        var LotID = $('#Lot').textbox('getText');
+        if (obj == null) {
+            var R = API('V_WIPAction/GetWIPInfoByCode', { code: LotID });
+            if (!R) { return; }
+        } else {
+            R = obj;
+        }
+        $('#Submit').linkbutton({ disabled: false });
+
+        $('#CODE').textbox('setText', R.CODE);
+        $('#WO').textbox('setText', R.WO);
+        $('#PROD').textbox('setText', R.PROD);
+        $('#ROUTE').textbox('setText', R.ROUTE);
+        $('#OPER').textbox('setText', R.OPER);
+        $('#USERNAME').textbox('setText', R.USERNAME);
+    }
+
+    function MoveOut() {
+        var data = {
+            WIPID: $('#Lot').textbox('getText'),
+            UID: UserInfo.SID
+        }
+        var R = API('V_WIPAction/WIPMoveOut', data);
+        if (!R) { return; }
+        LoadData(R);
+
+        InsertHis('[' + data.WIPID + ']已完成過帳，目前站點:' + R.OPER);
+        Msg('過帳完成!');
+    }
+
+    //#region Init
+    $('#Submit').linkbutton({
+        iconCls: 'icon-ok',
+        width: '49%',
+        height: 'auto',
+        disabled: true,
+        onClick: function () {
+            MoveOut();
+        }
+    })
+
+    $('#Clear').linkbutton({
+        iconCls: 'icon-no',
+        width: '49%',
+        onClick: function () {
+            ClearData();
+        }
+    })
+
+    $('#Lot').textbox({
+        label: '批次ID',
+        width: '100%',
+        labelPosition: 'top',
+        buttonIcon: 'icon-barcode',
+        required: true,
+        onChange: function (o, n) {
+            LoadData();
+        },
+        onClickButton: function () {
+            i++;
+            InsertHis(i)
+        }
+    }).textbox('textbox').bind('keydown', function (e) {
+        if (e.keyCode == 13) {// when press ENTER key, accept the inputed value.
+            LoadData();
+        }
+    });
+
+    $('#Eqp').combogrid({
+        label: '設備ID',
+        width: '100%',
+        disabled: true,
+        labelPosition: 'top'
+    });
+
+    $('#CODE').textbox({
+        label: '批次ID',
+        width: '100%',
+        labelPosition: 'top',
+        readonly: true
+    });
+    $('#WO').textbox({
+        label: '工單',
+        width: '100%',
+        labelPosition: 'top',
+        readonly: true
+    });
+    $('#PROD').textbox({
+        label: '產品',
+        width: '100%',
+        labelPosition: 'top',
+        readonly: true
+    });
+    $('#ROUTE').textbox({
+        label: '途程',
+        width: '100%',
+        labelPosition: 'top',
+        readonly: true
+    });
+    $('#OPER').textbox({
+        label: '站點',
+        width: '100%',
+        labelPosition: 'top',
+        readonly: true
+    });
+    $('#USERNAME').textbox({
+        label: '更新人員',
+        width: '100%',
+        labelPosition: 'top',
+        readonly: true
+    });
+    //#endregion
+
+
+</script>

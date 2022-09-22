@@ -1,0 +1,400 @@
+﻿<script src="~/Scripts/EasyUI/datagrid-groupview.js"></script>
+
+<div id="_layout" class="easyui-layout" fit="true">
+    <div data-options="region:'west'" style="width:300px">
+        <table id="MDList"></table>
+        <div id="MDTools">
+            <table>
+                <tr>
+                    <td>
+                        <a id="MDAdd"></a>
+                    </td>
+                    <td>
+                        <div class="datagrid-btn-separator"></div>
+                    </td>
+                    <td>
+                        <input id="MDInput" />
+                        <a id="MDQuery"></a>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="3">
+                        <label style="color:red">於資料列上擊點滑鼠右鍵可刪除其資料</label>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div id="MDPnl" style="width:350px;height:250px">
+            <div class="easyui-layout" fit="true">
+                <div data-options="region:'center'" style="height:520px">
+                    <div id="FrmP" class="easyui-panel" fit="true" style="padding:10px">
+                        <input id="MD_NAME" /></p>
+                        <input id="MD_CODE" /></p>
+                        <input id="MD_TYPE" /></p>
+                        <a id="Add_Table"></a></p>
+                    </div>
+                </div>
+
+                <div data-options="region:'south',split:false" style="text-align:center;padding:2px;height:36px">
+                    <a id="MD_save"></a>
+                    <a id="MD_exit"></a>
+
+                </div>
+            </div>
+        </div>
+
+        <div id="Add_TablePnl" style="padding:10px">
+            <span style="margin-right:20px">表名:</span><span>M_</span><input id="Add_TableName" /><a id="Add_Table_Submit" style="margin-left:5px"></a>
+        </div>
+
+    </div>
+
+    <div data-options="region:'center'">
+        <div style="float:left;width:300px">
+            <table id="MD_Col"></table>
+        </div>
+        <div style="width:300px;float:left">
+            <table id="MD_Col_Dtl"></table>
+            <div id="MD_Col_Dtl_tools">
+                <a href="#" class="icon-save" onclick="MD_Col_Dtl_save()"></a>
+            </div>
+        </div>
+    </div>
+
+
+
+</div>
+
+<script>
+    //頁面初始化
+    //參數列表初始化
+    var MD_SID = '';
+    $('#MDList').datagrid({
+        title: '參數列表',
+        toolbar: '#MDTools',
+        fit: true,
+        columns: [[
+            { field: 'SID', title: 'SID', hidden: true },
+            { field: 'NAME', title: '參數名稱', width: '35%' },
+            { field: 'CODE', title: '對應表名', width: '35%' },
+            {
+                field: 'SETTYPE', title: '類型', width: '30%', formatter: function (value, row, index) {
+                    switch (value) {
+                        case 'Base':
+                            return '單表';
+                            break;
+                        case 'MD':
+                            return '主/明細表';
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+        ]],
+        singleSelect: true,
+        onDblClickRow: function (ind, row) {
+            OpenMDPnl_Open('修改', 'UpdateModlingDatas', row)
+            $('#MD_NAME').textbox('setText', row.NAME)
+            $('#MD_CODE').combobox('setText', row.CODE)
+        },
+        onClickRow: function (ind, row) {
+            MD_Col_Load(row);
+            $('#MD_Col').datagrid('selectRow', 0);
+        },
+        onRowContextMenu: function (e, ind, row) {
+            e.preventDefault()
+            var d = '';
+            var data = [];
+            for (var key in row) {
+                if (Object.prototype.hasOwnProperty.call(row, key)) { // filter
+                    d += key + ':' + row[key] + '<br/>'
+                    data.push({ Name: key, Value: row[key] });
+                }
+            }
+
+            $.messager.confirm('確認視窗', '確認刪除該筆資料?<br/><br/><br/>' + d, function (r) {
+                if (r) {
+                    var R = API('V_MDSETUP/DeleteModlingDatas', { data: JSON.stringify(data) });
+                    if (!R) { return; }
+                    $.messager.show({
+                        title: '系統提示',
+                        msg: '刪除成功',
+                        showType: 'slide',
+                        style: {
+                            right: '',
+                            top: document.body.scrollTop + document.documentElement.scrollTop,
+                            bottom: ''
+                        }
+                    });
+                    MDList_Reload();
+                }
+            });
+        }
+    });
+
+    $('#MD_Col').datagrid({
+        title: '參數列表',
+        columns: [[
+            { field: 'SID', title: 'SID', hidden: true },
+            { field: 'S_MDSETUP_SID', title: 'S_MDSETUP_SID', hidden: true },
+            { field: 'COL', title: '欄位名', width: '100' },
+            { field: 'REMARK', title: '說明', width: '100' }
+        ]],
+        singleSelect: true,
+        onSelect: function (ind, row) {
+            $('#MD_Col_Dtl_col').textbox({
+                value: row.remark,
+                label: row.col,
+                readonly: true
+            });
+            $('#MD_Col_Dtl_tool').css('visibility', 'visible');
+            LoadDtl(row);
+        }
+    })
+
+    function LoadDtl(row) {
+        var _MD = API('V_MDSETUP/GetColDtl', { tb: row.S_MDSETUP_SID, col: row.COL , TableName:row.NAME })
+        //console.log(_MD);
+        $('#MD_Col_Dtl').propertygrid({
+            tools: '#MD_Col_Dtl_tools',
+            title: '設定值',
+            columns: [[
+                { field: 'text', title: '項目名稱', width: '100px' },
+                {
+                    field: 'value', title: '設定值', width: '150px',
+                    formatter: function (val, row, ind) {
+                        if (row.editor.type == 'checkbox' && val == 0) { return '否' };
+                        if (row.editor.type == 'checkbox' && val == 1) { return '是' };
+                        if (row.editor.type == 'combobox') {
+                            //console.log($(this))
+                        };
+                        return val;
+                    },
+                    styler: function (val, row, ind) {
+                        if (row.editor.type == 'checkbox' && val == 1) {
+                            return 'background-color:#A6FFA6;';
+                        };
+                    }
+                }
+            ]],
+            // toolbar: '#MD_Col_Dtl_tool',
+            data: _MD,
+            width: 300,
+            onDblClickRow: function (ind, row) {
+                if (row.editor.type == 'checkbox') {
+                    if (row.value == 0) {
+                        row.value = 1;
+                    } else {
+                        row.value = 0;
+                    }
+                    $(this).datagrid('refreshRow', ind);
+                    $(this).datagrid('clearSelections');
+                }
+            }
+        })
+
+    }
+
+    function MD_Col_Dtl_save() {
+        var property = $('#MD_Col_Dtl').propertygrid('getData');
+        var tbcolumn = $('#MD_Col').datagrid('getSelected');
+      
+   
+        var R = API('V_MDSETUP/SaveColDtl', { rows: JSON.stringify(property.rows), TableName: tbcolumn.NAME, tb: tbcolumn.S_MDSETUP_SID, col: tbcolumn.COL});
+        if (!R) { return; }
+
+        $.messager.show({
+            title: '系統提示',
+            msg: '保存成功!',
+            showType: 'slide',
+            timeout: 2000,
+            style: {
+                right: '',
+                top: document.body.scrollTop + document.documentElement.scrollTop,
+                bottom: ''
+            }
+        });
+
+    }
+
+    $('#MDAdd').linkbutton({
+        text: '新增',
+        iconCls: 'icon-add',
+        plain: true,
+        onClick: function (obj) {
+            OpenMDPnl_Open('新增', 'CreateModlingDatas', null)
+        }
+    });
+    $('#MDInput').textbox({
+        label: '參數名稱'
+    });
+    $('#MDQuery').linkbutton({
+        iconCls: 'icon-search',
+        plain: true
+    });
+
+    $('#Add_Table').linkbutton({
+        iconCls: 'icon-add',
+        plain: true,
+        onClick: function (obj) {
+            $('#Add_TablePnl').window('open');
+        }
+    });
+    $('#Add_Table').hide();//建表功能暫緩開發
+
+    $('#Add_TablePnl').window({
+        width: 350,
+        height: 90,
+        title: '新增資料表',
+        collapsible: false,
+        minimizable: false,
+        maximizable: false,
+        closable: true,
+        modal: true,
+        closed: true
+    });
+
+    $('#Add_TableName').textbox({
+        width: 200,
+        required: true
+    });
+
+    $('#Add_Table_Submit').linkbutton({
+        iconCls: 'icon-save',
+        onClick: function (obj) {
+
+        }
+    });
+
+    $('#MD_NAME').textbox({
+        label: '參數名稱',
+        required: true,
+        width: 250
+    });
+    $('#MD_CODE').combobox({
+        label: '對應表名',
+        required: true,
+        width: 250,
+        valueField: 'text',
+        textField: 'text'
+    });
+    $('#MD_TYPE').combobox({
+        label: '設定類型',
+        required: true,
+        width: 250,
+        valueField: 'id',
+        textField: 'text',
+        data: [{ id: 'Base', text: '單表' }, { id: 'MD', text: '主/明細表' }]
+    });
+
+    $('#MD_save').linkbutton({
+        text: '保存',
+        iconCls: 'icon-save',
+        width: 120,
+        onClick: function (obj) {
+            //var CheckCB = CheckComboboxItem([$('#MD_CODE')])
+            //if (!CheckCB) { return;}
+
+            if (!$('#MD_NAME').textbox('isValid')) {
+                ErrorMsg('參數名稱不得為空!');
+                return;
+            }
+
+            if (!$('#MD_CODE').combobox('isValid')) {
+                ErrorMsg('對應表名不得為空!');
+                return;
+            }
+
+            var d = [];
+            d.push({ Name: 'NAME', Value: $('#MD_NAME').textbox('getText') });
+            d.push({ Name: 'CODE', Value: $('#MD_CODE').combobox('getText') });
+            d.push({ Name: 'SETTYPE', Value: $('#MD_TYPE').combobox('getValue') });
+            d.push({ Name: 'SID', Value: MD_SID });
+            d.push({ Name: 'UDT', Value: '' });
+
+            var R = API('V_MDSETUP/' + $('#MDPnl').dialog('options').ActionType, { data: JSON.stringify(d) })
+            if (!R) { return; }
+
+            MDList_Reload();
+            MD_CODE_Load();
+
+            $.messager.show({
+                title: '系統提示',
+                msg: $('#MDPnl').dialog('options').title + '成功!',
+                showType: 'slide',
+                timeout: 2000,
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+
+            if ($('#MDPnl').dialog('options').title == '修改') {
+                $('#MDPnl').panel('close');
+            }
+        }
+    });
+
+
+    $('#MD_exit').linkbutton({
+        text: '離開',
+        iconCls: 'icon-exit',
+        width: 120,
+        onClick: function (obj) { $('#MDPnl').dialog('close'); }
+    });
+
+
+    //參數列表加載
+    MDList_Reload();
+
+
+    function MDList_Reload() {
+        var R = API('V_MDSETUP/GetMDList', { Name: '' });
+        $('#MDList').datagrid('loadData', R);
+    }
+
+    function MD_CODE_Load() {
+        var R = API('V_MDSETUP/GetMDTables', {});
+        $('#MD_CODE').combobox('loadData', R);
+        $('#MD_CODE').combobox('clear');
+    }
+
+    function MD_Col_Load(row) {
+
+        if (row.SETTYPE == 'Base') {
+            $('#MD_Col').datagrid({ groupField: 'NAME' });
+        } else {
+            $('#MD_Col').datagrid({
+                groupField: 'NAME', view: groupview, groupFormatter: function (value, rows) {
+                    return value;
+                }});
+        }
+
+        var R = API('V_MDSETUP/GetTableColumn', { TableName: row.CODE, SETTYPE: row.SETTYPE });
+        console.log(R);
+        $('#MD_Col').datagrid('loadData', R);
+    }
+
+    function OpenMDPnl_Open(tit, action, row) {
+        $('#MDPnl').dialog({
+            title: tit,
+            ActionType: action
+        });
+        $('#MDPnl').panel('open');
+        MD_CODE_Load();
+
+        if (tit == '新增') {
+            MD_SID = '';
+            $('#MD_NAME').textbox('setText', '');
+            $('#MD_CODE').combobox('setText', '');
+            $('#MD_CODE').combobox('readonly', false);
+        } else {
+            MD_SID = row.SID;
+            $('#MD_CODE').combobox('readonly', true);
+        }
+    }
+</script>
+

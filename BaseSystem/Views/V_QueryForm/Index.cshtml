@@ -1,0 +1,445 @@
+﻿
+<div class="easyui-layout" fit="true">
+    <div data-options="region:'west',split:true,collapsible:false" title="表單" tools="#QueryBar" style="width:15%;">
+        <div id="Forms"></div>
+    </div>
+    <div id="QueryBar">
+        <a id="QueryBtn" title="查詢" class="easyui-tooltip icon-search" href="#" onclick="$('#QueryPage').window('open')"></a>
+    </div>
+
+    <div id="QueryPage">
+        <div style="padding:10px">
+            <input id="Q_FormCode" /></p>
+            <input id="Q_Status" /></p>
+            <input id="Q_Oper" /></p>
+            <input id="Q_UID" /></p>
+            <input id="Q_NAME" /></p>
+            <input id="Q_Date" />
+        </div>
+        <div style="height:350px;padding:10px">
+            <table id="Q_Item"></table>
+            <div id="Qtb">
+                <input id="Q_FormSet_ID" /><br />
+                <input id="Q_FormDtl_ID" /><br />
+                <input id="Q_Item_Value" /><br />
+                <label style="color:red">於資料列上擊點滑鼠右鍵可刪除其資料</label>
+            </div>
+        </div>
+    </div>
+
+    <div data-options="region:'center',split:true">
+        <div id="pnl">
+            <div class="easyui-layout" fit="true" id="L">
+                <div data-options="region:'center'" style="height:60%">
+                    <div class="easyui-layout" fit="true">
+                        <div data-options="region:'west',collapsible:false" style="width:60%;padding:10px" title="表單資訊">
+                            <input id="FormCode" /></p>
+                            <input id="FormType" /></p>
+                            <input id="Status" /></p>
+                            <input id="Oper" /></p>
+                            <input id="Crt_UID" /></p>
+                            <hr />
+                            <div id="FormPnl" fit="true"></div>
+                        </div>
+                        <div data-options="region:'center'" title="附檔">
+                            <div id="FormFile" style="padding: 10px;" fit="true"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+
+    <div data-options="region:'east'" style="width:40%;">
+        <div id="L1" class="easyui-layout" fit="true">
+            <div data-options="region:'center'" closed="true">
+                <div id="step">
+                    <div id="stepflow" style="width:97%; height:100%;"></div>
+                </div>
+            </div>
+
+            @*<div data-options="region:'south'" style="height:30%;" closed="true">
+                </div>*@
+        </div>
+    </div>
+
+
+</div>
+
+
+<script type="text/javascript">
+
+    $('#QueryPage').window({
+        modal: true,
+        closed: true,
+        width: 400,
+        height: 700,
+        collapsible: false,
+        minimizable: false,
+        maximizable: false,
+        title: '查詢條件'
+    });
+
+    $('#Q_FormCode').textbox({ label: '單號', width: '100%', prompt: '輸入關鍵字並鍵入Enter鍵，進行模糊查詢!' }).textbox('textbox').bind('keydown', function (e) {
+        if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+            QueryForms();
+        }
+    });;
+    $('#Q_Status').combobox({
+        label: '狀態', width: '100%', prompt: '選擇單據狀態!(可複選)', valueField: 'id', textField: 'text', multiple: true
+        , data: [{ id: 'Wait', text: 'Wait' }, { id: 'Closed', text: 'Closed' }]
+        , onChange: function (obj) {
+            QueryForms();
+        }
+    })
+
+    $('#Q_Oper').combobox({
+        label: '目前節點', width: '100%', prompt: '選擇當前節點!(可複選)', valueField: 'id', textField: 'text', multiple: true
+        , data: API('V_QueryForm/GetStep')
+        , onChange: function (obj) {
+            QueryForms();
+        }
+    })
+
+    $('#Q_UID').textbox({ label: '人員工號', width: '100%', prompt: '輸入關鍵字並鍵入Enter鍵，進行模糊查詢!' }).textbox('textbox').bind('keydown', function (e) {
+        if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+            QueryForms();
+        }
+    });
+
+    $('#Q_NAME').textbox({ label: '人員姓名', width: '100%', prompt: '輸入關鍵字並鍵入Enter鍵，進行模糊查詢!' }).textbox('textbox').bind('keydown', function (e) {
+        if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+            QueryForms();
+        }
+    });
+
+    $('#Q_Date').datebox({
+        label: '開單日期', width: '100%', prompt: '選擇開單日期!',
+        onChange: function (n, o) {
+            QueryForms();
+        }
+    })
+
+    function QueryForms() {
+
+        var QueryData = {
+            FormCode: $('#Q_FormCode').textbox('getText'),
+            Status: $('#Q_Status').combobox('getText'),
+            Step: $('#Q_Oper').combobox('getText'),
+            UID: $('#Q_UID').textbox('getText'),
+            NAME: $('#Q_NAME').textbox('getText'),
+            CDT: $('#Q_Date').textbox('getText'),
+            Items: JSON.stringify($('#Q_Item').datagrid("getData").rows)
+        };
+        console.log(JSON.stringify($('#Q_Item').datagrid("getData").rows))
+        var datas = API('V_QueryForm/QueryForm', QueryData);
+
+        $('#Forms').tree('loadData', datas);
+
+    }
+
+    $('#Q_Item').datagrid({
+        fit: true,
+        toolbar: '#Qtb',
+        title: '項目條件',
+        columns: [[
+            { field: 'M_FORMSET_ID', title: '表單ID', hidden: true },
+            { field: 'FORMSETNAME', title: '表單名稱' },
+            { field: 'SID', title: '項目ID', hidden: true },
+            { field: 'FORMDTLNAME', title: '項目名稱' },
+            { field: 'Value', title: '內容' },
+        ]],
+        onRowContextMenu: function (e, ind, row) {
+            e.preventDefault()
+            var d = '';
+            var data = [];
+            for (var key in row) {
+                if (Object.prototype.hasOwnProperty.call(row, key)) { // filter
+                    d += key + ':' + row[key] + '<br/>'
+                    data.push({ Name: key, Value: row[key] });
+                }
+            }
+
+            $.messager.confirm('確認視窗', '確認刪除該筆資料?<br/><br/><br/>' + d, function (r) {
+                if (r) {
+                    if (!R) { return; }
+                    $('#Q_Item').datagrid('deleteRow', ind);
+                    QueryForms();
+                }
+            });
+        }
+    })
+
+    $('#Q_FormSet_ID').combobox({
+        label: '表單名稱', width: 250, valueField: 'id', textField: 'text',
+        data: API('V_QueryForm/GetFormSet')
+        , onChange: function (obj) {
+            $('#Q_FormDtl_ID').combobox('loadData', API('V_QueryForm/GetFormDtl', {SID:$(this).combobox('getValue')}))
+        }
+    });
+
+    $('#Q_FormDtl_ID').combobox({ label: '項目名稱', width: 250, valueField: 'id', textField: 'text' })
+
+    $('#Q_Item_Value').textbox({
+        label: '內容', width: 250, buttonIcon: 'icon-add',
+        onClickButton: function () {
+            var r = {
+                M_FORMSET_ID: $('#Q_FormSet_ID').combobox('getValue'),
+                FORMSETNAME: $('#Q_FormSet_ID').combobox('getText'),
+                SID: $('#Q_FormDtl_ID').combobox('getValue'),
+                FORMDTLNAME: $('#Q_FormDtl_ID').combobox('getText'),
+                Value: $(this).textbox('getText')
+            };
+            $('#Q_Item').datagrid('appendRow', r)
+            QueryForms();
+            //alert($(this).textbox('getText'));
+        }
+    })
+
+
+    var R = API('V_QueryForm/GetForms', {});
+    var FormSID = '';
+    console.log(R);
+
+    $('#FormFile').tree({
+        fit: true, title: '附檔',
+        onClick: function (node) {
+            if (node.IsFile) {
+                window.open(node.url, '_blank');
+            }
+        },
+        formatter: function (node) {
+            var s = node.text;
+            if (node.children) {
+                var _color = 'blue';
+                if (node.children.length == 0) {
+                    _color = 'black';
+                }
+                s += '&nbsp;<span style=\'color:' + _color + '\'>(' + node.children.length + ')</span>';
+            }
+            return s;
+        }
+    });
+
+    $('#Forms').tree({
+        data: R,
+        formatter: function (node) {
+            var s = node.text;
+            if (node.children) {
+                var _color = 'blue';
+                if (node.children.length == 0) {
+                    _color = 'black';
+                }
+                s += '&nbsp;<span style=\'color:' + _color + '\'>(' + node.children.length + ')</span>';
+            }
+            return s;
+        },
+        onClick: function (node) {
+            if (!node.IsAction) { return; }
+            var FormData = API('V_QueryForm/GetFormData', { SID: node.id });
+            //console.log(FormData);
+            FormData.M_ROUTEDTL_ID = node.M_ROUTEDTL_ID;
+            FormData.MainData = node.CustObj;
+
+            $('#FormCode').textbox({ label: '單號', readonly: true, width: '100%', labelPosition: 'left', value: node.CustObj.CODE });
+            $('#FormType').textbox({ label: '表單名稱', readonly: true, width: '100%', labelPosition: 'left', value: node.CustObj.FORMTYPE });
+            $('#Status').textbox({ label: '狀態', readonly: true, width: '100%', labelPosition: 'left', value: node.CustObj.STATUS });
+            var _Oper = '';
+            if (node.CustObj.M_ROUTEDTL_ID != '/' && Enumerable.from(FormData.Route).select().where(o => o.SID == node.CustObj.M_ROUTEDTL_ID).toArray().length > 0) {
+                _Oper = Enumerable.from(FormData.Route).select().where(o => o.SID == node.CustObj.M_ROUTEDTL_ID).toArray()[0].OPER;
+            } else {
+                _Oper = '結案';
+            }
+            $('#Oper').textbox({ label: '當前節點', readonly: true, width: '100%', labelPosition: 'left', value: _Oper });
+            $('#Crt_UID').textbox({ label: '開單用者', readonly: true, width: '100%', labelPosition: 'left', value: node.CustObj.UID });
+
+            $('#FormLayout').show();
+            //產生表單
+            var tmpHtml = '';
+            //產生Html
+            $.each(FormData.Items, function (ind, obj) {
+                var c = { field: obj.ColName, title: obj.text, width: obj.width, align: obj.align, hidden: obj.Show };
+                if (obj.UI == 'Combobox') {
+                    c.formatter = function (value, row, index) {
+                        var _Array = Enumerable.from(obj.Source).select().where(o => o.id == value).toArray();
+                        if (_Array.length == 0) {
+                            return value;
+                        } else {
+                            return Enumerable.from(obj.Source).select().where(o => o.id == value).toArray()[0].text;
+                        }
+                    };
+                }
+                //tmpCol.push(c);
+
+                tmpHtml += '<input id="' + node.CODE + obj.SID + '" name="' + node.CODE + obj.SID + '"/></p>';
+            })
+            $('#FormPnl').html(tmpHtml);
+            //加載UI控件
+            $.each(FormData.Items, function (ind, obj) {
+                switch (obj.CONTYPE) {
+                    case 'Number':
+                        $('#' + node.CODE + obj.SID).numberbox({ label: obj.NAME, width: '100%', labelPosition: 'left', required: obj.REQUIRED, readonly: true })
+                        $('#' + node.CODE + obj.SID).numberbox('setText', obj.Value)
+                        break;
+                    case 'Date':
+                        $('#' + node.CODE + obj.SID).datebox({ label: obj.NAME, width: '100%', labelPosition: 'left', required: obj.REQUIRED, readonly: true });
+                        $('#' + node.CODE + obj.SID).datebox('setText', obj.Value)
+                        break;
+                    case 'Time':
+                        $('#' + node.CODE + obj.SID).datetimebox({ label: obj.NAME, width: '100%', labelPosition: 'left', required: obj.REQUIRED, readonly: true })
+                        $('#' + node.CODE + obj.SID).datetimebox('setText', obj.Value)
+                        break;
+                    case 'Combobox':
+                        $('#' + node.CODE + obj.SID).combobox({
+                            label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: true, labelPosition: 'left',
+                            valueField: 'id', textField: 'text', data: API('Public/GetDataSourceBySID', { SID: obj.SOURCE })
+                        })
+                        $('#' + node.CODE + obj.SID).combobox('select', obj.Value)
+                        //ConboboxList.push($('#' + node.CODE + obj.SID));  "filebox"
+                        break;
+                    default:
+                        $('#' + node.CODE + obj.SID).textbox({ label: obj.NAME, width: '100%', labelPosition: 'left', required: obj.REQUIRED, readonly: true })
+                        $('#' + node.CODE + obj.SID).textbox('setText', obj.Value)
+                        break;
+                }
+
+            })
+
+            //載入已附加檔案
+            var _HisFile = [];
+            _HisFile.push({ id: 'Create', text: '表單創建', iconCls: 'icon-folder', children: [] });
+
+            $.each(FormData.Route, function (ind, obj) {
+                _HisFile.push({ id: obj.SID, text: obj.OPER, iconCls: 'icon-folder', children: [] });
+            });
+            //console.log(FormData.Files);
+            $.each(FormData.Files, function (ind, obj) {
+                var n = Enumerable.from(_HisFile).select().where(o => o.id == obj.M_ROUTEDTL_ID).toArray()[0];
+                n.children.push({ id: obj.SID, text: obj.NAME, IsFile: true, url: obj.url });
+            });
+            //console.log(_HisFile)
+            $('#FormFile').tree('loadData', _HisFile);
+
+
+
+            $('#pnl').panel({ title: node.NAME });
+            $('#pnl').panel('open');
+
+
+            $('#FileList').tree({});
+            $('#FileList').tree('loadData', []);
+
+            $('#L1').layout('panel', 'south').panel('open');
+            $('#L1').layout('panel', 'center').panel('open');
+
+            $('#step').panel({ title: '簽核流程' });
+            $('#step').panel('open');
+            ShowStep(FormData);
+            $(window).resize();
+        }
+    });
+
+    $('#step').panel({ fit: true, closed: true, bodyCls: 'PnlBody' });
+    $('#pnl').panel({ fit: true, closed: true });
+
+    function ShowStep(node) {
+        console.log(node)
+        var chartDom = document.getElementById('stepflow');
+        var myChart = echarts.init(chartDom);
+        var option;
+
+        var Fdata = [];
+        var Textdata = [];
+        var Ldata = [];
+        var _color = ['#BEBEBE', '#008F00', '#0072E3']
+        var Color = _color[0]
+        Fdata.push({ name: '創建表單', x: 0, y: 0, itemStyle: { color: Color } });
+        Fdata.push({ name: '[' + node.MainData.UID + ']建立單據! \n\n ' + node.MainData.CDT, x: 0, y: 0, itemStyle: { opacity: 1, color: '#fff' }, symbolSize: 0.1, label: { position: 'right', fontSize: '14', distance: 50 } });
+        $.each(node.Route, function (ind, obj) {
+
+            //繪製節點
+            if (obj.SID == node.MainData.M_ROUTEDTL_ID) {
+                Color = _color[1];
+                Fdata.push({ name: ind + 1 + '.' + obj.OPER, x: 0, y: ind + 1, itemStyle: { color: Color } });
+                Color = _color[2];
+            } else {
+                Fdata.push({ name: ind + 1 + '.' + obj.OPER, x: 0, y: ind + 1, itemStyle: { color: Color } });
+            }
+
+            //繪製線條
+            if (ind == 0) {
+                Ldata.push({ source: '創建表單', target: ind + 1 + '.' + obj.OPER });
+            } else {
+                Ldata.push({ source: ind + '.' + node.Route[ind - 1].OPER, target: ind + 1 + '.' + node.Route[ind].OPER });
+            }
+
+            //繪製簽核備註
+            if (Enumerable.from(node.Sign).select().where(o => o.M_ROUTEDTL_ID == obj.SID).toArray().length > 0) {
+                var _Sign = Enumerable.from(node.Sign).select().where(o => o.M_ROUTEDTL_ID == obj.SID).toArray()[0];
+                Fdata.push({ name: _Sign.REMARK + ' \n\n ' + _Sign.UDT, x: 0, y: ind + 1, itemStyle: { opacity: 1, color: '#fff' }, symbolSize: 0.1, label: { position: 'right', fontSize: '14', distance: 50 } });
+            }
+
+        });
+        Fdata.push({ name: '結案', x: 0, y: node.Route.length + 1, itemStyle: { color: Color } });
+        Ldata.push({ source: node.Route.length + '.' + node.Route[node.Route.length - 1].OPER, target: '結案' });
+        //console.log(Ldata);
+        option = {
+            backgroundColor: '#fff',
+            series: [
+                {
+                    left: 0,
+                    top: 50,
+                    type: 'graph',
+                    layout: 'none',
+                    symbolSize: 50,
+                    //coordinateSystem: 'cartesian2d',
+                    label: {
+                        show: true
+                    },
+                    edgeSymbol: ['circle', 'arrow'],
+                    edgeSymbolSize: [4, 10],
+                    edgeLabel: {
+                        fontSize: 20
+                    },
+                    data: Fdata,
+                    links: Ldata,
+                    lineStyle: {
+                        opacity: 1,
+                        width: 2
+                    }
+                }
+            ]
+        };
+        option && myChart.setOption(option);
+    }
+
+</script>
+<style>
+    .textColor {
+        background-color: #f3f3f3;
+    }
+
+    .PnlBody {
+        background-color: #f3f3f3;
+    }
+
+    .hc {
+        text-align: center;
+    }
+
+    .wizard .content {
+        background-color: #fff;
+    }
+
+    .wizard > .steps .current a, .wizard > .steps .current a:hover, .wizard > .steps .current a:active {
+        background-color: limegreen;
+    }
+
+    .wizard > .steps .done a, .wizard > .steps .done a:hover, .wizard > .steps .done a:active {
+        background-color: #e5dcdc;
+        color: #000;
+    }
+</style>

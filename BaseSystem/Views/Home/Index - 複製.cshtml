@@ -1,0 +1,81 @@
+﻿
+<style>
+    .easyui-dialog pop{
+
+    }
+</style>
+<div id="MainMenu"></div>
+
+<script>
+
+    var M = [
+        {
+            text: '系統設定', state: 'closed', iconCls: 'icon-save', children: [
+                { url: 'V_LavelSetup', text: '職等設定', IsAction: true },
+                { url: 'V_ModlingSetup', text: '職等設定', IsAction: true, MD: 'M_LAVEL' }
+            ]
+        },
+        {
+            text: '功能介面', state: 'closed', children: [
+                { url: 'V_EmpManage', text: '雇員管理', IsAction: true }
+            ]
+        },
+        {
+            text: '查詢作業', state: 'closed', children: [{
+
+            }]
+        },
+        {
+            text: '報表查詢', state: 'closed', children: [{
+
+            }]
+        }
+    ]
+
+    $('#MainMenu').tree({
+        data: M,
+        onClick: function (node) {
+            if (node.state == 'closed') {
+                $(this).tree('expand', node.target);
+            } else {
+                $(this).tree('collapse', node.target);
+            };
+
+            if (node.IsAction) {
+                console.log($('.panel-noscroll'))//.each(function (ind, obj) { $(this).dialog('close') });
+                console.log($('#ModlingForm'))
+                $('.pop').each(function (ind, obj) {$(this).dialog('destroy', false) });
+                $('#FunCon').panel({ href: node.url, title: node.text, queryParams: { ModlingData: { MD: node.MD, title: node.text } }})
+            }
+
+        
+        }
+    });
+
+    $.fn.datebox.defaults.formatter = function (date) {
+        var y = date.getFullYear();
+        var m = date.getMonth() + 1;
+        var d = date.getDate();
+        return y + '/' + m + '/' + d;
+    }
+
+    $.fn.datebox.defaults.parser = function (s) {
+        var t = Date.parse(s);
+        if (!isNaN(t)) {
+            return new Date(t);
+        } else {
+            return new Date();
+        }
+    }
+
+    function API(url, obj) {
+        return $.ajax({
+            url: url,
+            data: obj,
+            type: 'Post',
+            dataType: 'json',
+            async: false
+        }).done().responseJSON;
+    }
+
+</script>

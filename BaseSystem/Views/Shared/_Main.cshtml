@@ -1,0 +1,373 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>自製系統 System</title>
+
+    @Styles.Render("~/Scripts/EasyUI/themes/gray/easyui.css")
+    @Styles.Render("~/Scripts/EasyUI/themes/icon.css")
+    @Styles.Render("~/Scripts/EasyUI/themes/color.css")
+
+    @Scripts.Render("~/Scripts/EasyUI/jquery.min.js")
+    @Scripts.Render("~/Scripts/EasyUI/jquery.easyui.min.js")
+    @Scripts.Render("~/Scripts/EasyUI/locale/easyui-lang-zh_TW.js")
+    @Scripts.Render("~/Scripts/linq.min.js")
+    @Scripts.Render("~/Scripts/echarts/echarts.min.js")
+
+
+    <!--前端QR Code掃碼-->>
+    @*<script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>*@
+    @*<script src="~/Scripts/instascan/instascan.min.js"></script>*@
+
+    <style>
+        .panel-header, .panel-body {
+            border-color: #c3c3c3;
+        }
+
+        .panel-body {
+            background-color: #FCFCFC;
+        }
+
+        .easyui-dialog pop {
+        }
+
+        .errorMsg {
+            color: red;
+            font-weight: bold;
+            background-color: lightgoldenrodyellow;
+        }
+    </style>
+</head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<body class="easyui-layout" fit="true">
+
+    <div data-options="region:'north'" style="height:10%;padding:5px">
+        <div style="position: absolute; float: left;"><h1>Instek E-Flow</h1></div>
+
+        <div id="Pnl_SignIn" style="position: absolute  ;float:left;bottom: 5px;right:5px">
+            <input id="UID" />
+            <input id="Pwd" />
+            <a id="btnSignIn">登入</a>
+        </div>
+
+        <div id="Pnl_UserInfo" style="position: absolute  ;float:left;bottom: 5px;right:5px">
+            <input id="UserInfo" />
+            <a id="btnSignOut">登出</a>
+        </div>
+    </div>
+
+    <div data-options="region:'west',title:'功能選單',tools: [{ iconCls: 'icon-help', handler: function () {  window.open('Doc.pdf', '_blank'); } }],collapsible:false" style="width:15%">
+        <div id="MainMenu"></div>
+    </div>
+
+    <div id="FunCon" data-options="region:'center'">
+        @RenderBody()
+    </div>
+
+    <div data-options="region:'south'" style="height:5%;text-align:center">
+        copyright ©Instek. All rights reserved.
+
+    </div>
+    <div id="Windows"></div>
+
+    <script>
+        var UserToken = 'Empty';
+        var UserInfo = null;
+
+        
+        if (isMobileDevice()) {
+            window.location = '/MobilePage';
+        }
+
+        function isMobileDevice() {
+            var Result = false;
+            var mobileDevices = ['Android', 'webOS', 'iPhone', 'iPad', 'iPod', 'BlackBerry', 'Windows Phone']
+            $.each(mobileDevices, function (ind, obj) {
+                console.log(ind);
+                if (navigator.userAgent.match(obj)) {
+                    Result = true;
+                    return false;
+                }
+            });
+            return Result;
+        }
+
+
+        function ShowHistory(title, dg) {
+            $('#Windows').html('<div id="HisWindows"><table id="HisGrid"></table></div>');
+
+            $('#HisWindows').window({
+                width: '80%',
+                title: title,
+                height: $(window).height() * 0.8,
+                collapsible: false,
+                minimizable: false,
+                maximizable: false,
+                modal: true,
+                closed: true,
+                onClose: function () {
+                    $('#Windows').html('');
+                }
+            });
+            $('#HisGrid').datagrid(dg);
+            $('#HisWindows').window('open');
+        }
+
+
+        $('#Pnl_UserInfo').hide();
+        $('#UID').textbox({
+            label: '帳號'
+        }).textbox('textbox').bind('keydown', function (e) {
+            if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+                $('#Pwd').textbox('textbox').focus();
+            }
+        });
+
+        $('#Pwd').textbox({
+            label: '密碼'
+            , type: 'password'
+        }).textbox('textbox').bind('keydown', function (e) {
+            if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+                $('#btnSignIn').click();
+            }
+        });
+
+        $('#UserInfo').textbox({
+            iconCls: 'icon-man'
+            , iconAlign: 'left'
+            , readonly: true
+        });
+
+        var UserMenu = [];
+
+        $('#btnSignIn').linkbutton({
+            onClick: function (obj) {
+                var _U = {
+                    UID: $('#UID').textbox('getText'),
+                    PWD: $('#Pwd').textbox('getText')
+                }
+
+                var R = API('UserManage/SignIn', _U);
+                if (!R) { return; }
+                console.log(R);
+                //UserInfo = R;
+
+                $('#MainMenu').tree('loadData', R.UserMenu)//載入用戶功能
+
+                $('#UserInfo').textbox('setText', R.NAME);
+                UserToken = R.TOKEN;
+
+                $('#Pnl_SignIn').hide();
+                $('#Pnl_UserInfo').show();
+            }
+        });
+
+        $('#btnSignOut').linkbutton({
+            onClick: function (obj) {
+
+                var R = API('UserManage/SignOut', { UID: $('#UID').textbox('getText') });
+                if (!R) { return; }
+                UserToken = R.TOKEN;
+
+                $('#UID').textbox('setText', '');
+                $('#Pwd').textbox('setText', '');
+                $('#Pnl_SignIn').show();
+                $('#Pnl_UserInfo').hide();
+                var R = API('UserManage/PublicFun', {});
+                if (!R) { return; }
+                $('#MainMenu').tree('loadData', R.UserMenu)//載入用戶功能
+
+                $('#FunCon').panel({ href: 'Public/Msg/已完成登出', title: '已完成登出' })
+
+            }
+        });
+
+        //var _mdlist = API('V_ModlingSetup/GetModlingList', {});
+
+        var M = [
+            {
+                text: '查詢作業', state: 'closed', children: [
+                    {}
+                ]
+            },
+            {
+                text: '報表查詢', state: 'closed', children: [
+                    {}
+                ]
+            }
+        ]
+
+        $('#MainMenu').tree({
+            data: M,
+            onClick: function (node) {
+                console.log(node)
+                if (node.state == 'closed') {
+                    $(this).tree('expand', node.target);
+                } else {
+                    $(this).tree('collapse', node.target);
+                };
+
+                if (node.IsAction) {
+                    $('.window-shadow').each(function (ind, obj) { $(this).remove() });
+                    $('.panel.window.panel-htop').each(function (ind, obj) { $(this).remove() });
+                    $('.pop').each(function (ind, obj) { $(this).dialog('destroy', false) });
+                    if (node.CheckUser) {
+                        //檢查使用者登入狀態並取得資訊
+                        UserInfo = API('Public/GetUserInfo', { Token: UserToken });
+                        if (!UserInfo) {
+                            toErrorPage('使用者授權異常!')
+                        }
+                        else {
+                            $('#FunCon').panel({ href: node.url, title: node.text, queryParams: { ModlingData: { MD: node.MD, title: node.text } } });
+                        }
+                    } else {
+                        $('#FunCon').panel({ href: node.url, title: node.text, queryParams: { ModlingData: { MD: node.MD, title: node.text } } });
+                    }
+
+                }
+            }
+        });
+
+
+        $.fn.datebox.defaults.formatter = function (date) {
+            var y = date.getFullYear();
+            var m = date.getMonth() + 1;
+            var d = date.getDate();
+            return y + '/' + m + '/' + d;
+        }
+
+        $.fn.datebox.defaults.parser = function (s) {
+            var t = Date.parse(s);
+            if (!isNaN(t)) {
+                return new Date(t);
+            } else {
+                return new Date();
+            }
+        }
+
+        function API(url, obj) {
+            var _R = $.ajax({
+                url: './' + url,
+                data: obj,
+                type: 'Post',
+                dataType: 'json',
+                async: false
+            });
+
+            if (_R.status == 200) {
+                return _R.responseJSON;
+            }
+            else {
+                ErrorMsg(_R.responseText);
+                return false;
+            }
+        }
+
+        $.extend($.fn.textbox.methods, {
+            // 隐藏textbox
+            hide: function (jq) {
+                var span = jq.textbox("textbox").parent("span.textbox");
+                span.hide();
+            },
+            // 显示textbox
+            show: function (jq) {
+                var span = jq.textbox("textbox").parent("span.textbox");
+                span.show();
+            }
+        });
+
+        function ErrorMsg(msg) {
+
+            $.messager.show({
+                title: '系統提示',
+                msg: msg,
+                showType: 'slide',
+                timeout: 2000,
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                },
+                bodyCls: 'errorMsg',
+                headerCls: 'errorMsg'
+            });
+        }
+
+        function Msg(msg) {
+            $.messager.show({
+                title: '系統提示',
+                msg: msg,
+                showType: 'slide',
+                timeout: 2000,
+                style: {
+                    right: '',
+                    top: document.body.scrollTop + document.documentElement.scrollTop,
+                    bottom: ''
+                }
+            });
+        }
+
+        //特定需輸入Admin Token的介面
+        function AdminToken() {
+            $.messager.prompt('system info', 'Enter admin token from config.', function (r) {
+                if (r == API('UserManage/GetAdminToken', {})) {
+
+                }
+                else {
+                    $('#FunCon').panel({ href: 'Public/Error', title: 'Error' })
+                }
+            });
+        }
+
+        function toErrorPage(msg) {
+            $('#FunCon').panel({ href: 'Public/Error/' + msg, title: 'Error' })
+        }
+
+        function CheckComboboxItem(Arry) {
+            var Result = true;
+            $.each(Arry, function (ind, obj) {
+                if (obj.combobox('getText') != '') {
+                    var _checkIDArry = Enumerable.from(obj.combobox('getData')).select().where(o => o.id == obj.combobox('getValue')).toArray();
+                    if (_checkIDArry == 0) {
+                        ErrorMsg('[' + obj.combobox('options').label + ']的內容不在項目內!');
+                        Result = false;
+                    }
+                }
+            })
+            return Result;
+        }
+
+        $.extend($.fn.textbox.methods, {
+            show: function (jq) {
+                return jq.each(function () {
+                    $(this).next().show();
+                })
+            },
+            hide: function (jq) {
+                return jq.each(function () {
+                    $(this).next().hide();
+                })
+            }
+        })
+
+        $(function () {
+            var R = API('UserManage/PublicFun', {});
+            if (!R) { return; }
+            $('#MainMenu').tree('loadData', R.UserMenu)//載入用戶功能
+            $('#UserInfo').textbox('setText', R.NAME);
+            UserToken = R.TOKEN;
+        });
+
+        $.fn.datebox.defaults.formatter = function (date) {
+            var y = date.getFullYear();
+            var m = String(date.getMonth() + 1).padStart(2, '0');
+            var d = String(date.getDate()).padStart(2, '0');
+            return y + '/' + m + '/' + d;
+        }
+
+
+    </script>
+</body>
+</html>

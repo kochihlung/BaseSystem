@@ -1,0 +1,291 @@
+﻿<div id="_layout" class="easyui-layout" fit="true">
+    <div data-options="region:'west'" style="width:300px">
+        <table id="WO_Main"></table>
+        <div id="WO_Main_tools">
+            <div class="easyui-accordion">
+                <div title="查詢條件" data-options="iconCls:'icon-search'" style="overflow:auto;padding:10px;">
+                    <input id="S_WONbr" /></p>
+                    <label style="margin-right:18px">工單狀態</label>
+                    <input type="checkbox" id="S_Create" value="1" />Created
+                    <input type="checkbox" id="S_WIP" value="1" />WIP
+                    <input type="checkbox" id="S_Complete" value="1" />Complete<br />
+                    <input type="checkbox" id="S_Close" value="1" style="margin-left:82px" />Close</p>
+                    <input id="S_PROD" />
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+    <div data-options="region:'center'">
+        <div style=" width: 500px; float: left; height: 96%">
+            <div id="p1" class="easyui-panel" style="width:400px;padding:0px 10px 0px 10px" title="工單資訊" fit="true" tools="#p1Tools" footer="#tb">
+                <input id="SID" hidden="true" /></p>
+                <input id="CODE" /></p>
+                <input id="M_PROD" /></p>
+                <input id="M_ROUTE" /></p>
+                <input id="QTY" /></p>
+                <input id="STATUS" /></p>
+                <input id="UN" /></p>
+                <input id="REMARK" /></p>
+            </div>
+        </div>
+        <div id="p1Tools">
+            <a id="Save" title="保存" class="easyui-tooltip icon-save" href="#" onclick="WoSave()"></a>
+        </div>
+        <div id="tb">
+            <a id="Create">建立</a>
+            @*<a id="Hold">鎖定</a>
+            <a id="UnHold">解鎖</a>*@
+            <a id="Complete">完工</a>
+            <a id="Close">關閉</a>
+            <a id="His">工單歷史</a>
+        </div>
+
+        @*<div style=" width: 200px; float: left;">
+            <div id="p2" class="easyui-panel" style="width:250px" title="動作" fit="true">
+              
+            </div>
+        </div>*@
+
+
+    </div>
+
+</div>
+
+<script type="text/javascript">
+
+    $(function () {
+        LoadWOList();
+        $('#p1').panel('resize')
+    });
+
+
+    function LoadWOList() {
+
+        var _StatusStr = ''
+
+        if (_Status.length == 0) {
+            _StatusStr = '';
+        } else {
+            _StatusStr = "'" + _Status.join("','") + "'";
+        }
+
+        var QueryData = {
+            WO: $('#S_WONbr').textbox('getText'),
+            Status: _StatusStr,
+            Prod: $('#S_PROD').combobox('getValue')
+        }
+        console.log(QueryData)
+        var R = API('V_WOManage/LoadWoList', QueryData);
+        $('#WO_Main').datagrid('loadData', R);
+    }
+
+    var _Status = [];
+
+    $("#S_Create").click(function () {
+        if ($(this).prop('checked')) {
+            _Status.push('Create');
+        } else {
+            _Status.splice($.inArray('Create', _Status), 1);
+        }
+        LoadWOList();
+    })
+    $("#S_WIP").click(function () {
+        if ($(this).prop('checked')) {
+            _Status.push('WIP');
+        } else {
+            _Status.splice($.inArray('WIP', _Status), 1);
+        }
+        LoadWOList();
+    })
+    $("#S_Complete").click(function () {
+        if ($(this).prop('checked')) {
+            _Status.push('Complete');
+        } else {
+            _Status.splice($.inArray('Complete', _Status), 1);
+        }
+        LoadWOList();
+    })
+    $("#S_Close").click(function () {
+        if ($(this).prop('checked')) {
+            _Status.push('Close');
+        } else {
+            _Status.splice($.inArray('Close', _Status), 1);
+        }
+        LoadWOList();
+    })
+
+    function WoSave() {
+        var Data = {
+            CODE: $('#CODE').textbox('getText'),
+            M_PROD: $('#M_PROD').combobox('getValue'),
+            M_ROUTE: $('#M_ROUTE').combobox('getValue'),
+            Qty: $('#QTY').numberbox('getText'),
+            STATUS: $('#STATUS').textbox('getText'),
+            REMARK: $('#REMARK').textbox('getText'),
+            UID: UserInfo.SID,
+            SID: $('#SID').text()
+        }
+        var R = API('V_WOManage/SaveWO', { InData: Data })
+        if (!R) { return; }
+        LoadWOList();
+        Msg('保存成功');
+    }
+
+    $('#S_WONbr').textbox({
+        label: '工單號',
+        width: '100%',
+        prompt: 'Enter鍵進行糢糊查詢'
+    }).textbox('textbox').bind('keydown', function (e) {
+        if (e.keyCode == 13) {	// when press ENTER key, accept the inputed value.
+            LoadWOList();
+        }
+    });
+
+    $('#S_PROD').combobox({
+        label: '產品',
+        width: '100%',
+        valueField: 'id',
+        textField: 'text',
+        data: API('Public/GetDataSource', { Code: 'Prod' }),
+        onChange: function (n, o) {
+            LoadWOList();
+        }
+    })
+
+    $('#WO_Main').datagrid({
+        fit: true,
+        columns: [[
+            { field: 'SID', title: 'SID', hidden: true },
+            { field: 'CODE', title: '工單號', width: '50%' },
+            { field: 'Prod', title: '產品', width: '50%' }
+        ]],
+        toolbar: '#WO_Main_tools',
+        singleSelect: true,
+        onClickRow: function (ind, row) {
+            $('#CODE').textbox({ readonly: true, required: true });
+            //限定除Status=Create外不能修改的資料
+            if (row.STATUS == 'Create') {
+                $('#M_PROD').combobox({ readonly: false, required: true });
+                $('#M_ROUTE').combobox({ readonly: false, required: true });
+                $('#QTY').numberbox({ readonly: false, required: true });
+            } else {
+                $('#M_PROD').combobox({ readonly: true, required: true });
+                $('#M_ROUTE').combobox({ readonly: true, required: true });
+                $('#QTY').numberbox({ readonly: true, required: true });
+            }
+
+            $('#CODE').textbox('setText', row.CODE);
+            $('#M_PROD').combobox('setValue', row.M_PROD);
+            $('#M_ROUTE').combobox('setValue', row.M_ROUTE);
+            $('#QTY').numberbox('setText', row.QTY);
+            $('#STATUS').textbox('setText', row.STATUS);
+            $('#REMARK').textbox('setText', row.REMARK);
+            $('#UN').textbox('setText', row.UN);
+            $('#SID').text(row.SID);
+        }
+    });
+
+    $('#Create').linkbutton({
+        iconCls: 'icon-add',
+        //plain: true,
+        width: '100px',
+        onClick: function (obj) {
+            $('#CODE').textbox({ readonly: false, required: true });
+            $('#M_PROD').combobox({ readonly: false, required: true });
+            $('#M_ROUTE').combobox({ readonly: false, required: true });
+            $('#QTY').numberbox({ readonly: false, required: true });
+            $('#CODE').textbox('setText', '');
+            $('#M_PROD').combobox('setText', '');
+            $('#M_ROUTE').combobox('setText', '');
+            $('#QTY').numberbox('setText', '');
+            $('#STATUS').textbox('setText', 'Create');
+            $('#REMARK').textbox('setText', '');
+            $('#UN').textbox('setText', UserInfo.NAME);
+        }
+    });
+
+    $('#Complete').linkbutton({
+        iconCls: 'icon-ok',
+        //plain: true,
+        width: '100px',
+        onClick: function (obj) {
+            Msg('待提供完工條件後再開發!');
+        }
+    });
+
+    $('#Close').linkbutton({
+        iconCls: 'icon-finished',
+        //plain: true,
+        width: '100px',
+        onClick: function (obj) {
+            Msg('待提供完工條件後再開發!');
+        }
+    });
+
+    $('#His').linkbutton({
+        iconCls: 'icon-search',
+        //plain: true,
+        width: '100px',
+        onClick: function (obj) {
+            var dg = API('V_WOManage/GetWOHistory', { SID: $('#SID').text() })
+            console.log(dg);
+            ShowHistory('工單歷史', dg);
+        }
+    });
+
+    $('#CODE').textbox({
+        label: '工單號',
+        width: '100%',
+        readonly: true
+    })
+
+    $('#M_PROD').combobox({
+        label: '產品',
+        width: '100%',
+        readonly: true,
+        valueField: 'id',
+        textField: 'text',
+        data: API('Public/GetDataSource', { Code: 'Prod' })
+    })
+
+    $('#M_ROUTE').combobox({
+        label: '途程',
+        width: '100%',
+        readonly: true,
+        valueField: 'id',
+        textField: 'text',
+        data: API('Public/GetDataSource', { Code: 'Route' })
+    })
+
+    $('#QTY').numberbox({
+        label: '數量',
+        width: '100%',
+        readonly: true
+    })
+
+    $('#STATUS').textbox({
+        label: '狀態',
+        width: '100%',
+        readonly: true
+    })
+
+    $('#UN').textbox({
+        label: '使用者',
+        width: '100%',
+        readonly: true
+    })
+
+    $('#REMARK').textbox({
+        label: '備註',
+        width: '100%',
+        readonly: false,
+        multiline: true,
+        height: 150
+    })
+
+ 
+
+
+</script>

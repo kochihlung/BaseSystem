@@ -1,0 +1,221 @@
+﻿
+<div class="easyui-layout" fit="true">
+    <div data-options="region:'west',split:true" title="表單" style="width:15%;">
+        <div id="Forms"></div>
+    </div>
+
+    <div data-options="region:'center',split:true">
+        <div id="pnl">
+            <div class="easyui-layout" fit="true" id="L">
+                <div data-options="region:'north'" style="height:60%">
+                    <div id="FormPnl" style="padding:10px" fit="true"></div>
+                </div>
+
+                <div data-options="region:'center',title:'附檔',tools:'#FileButton'" style="padding:10px;">
+                    <div id="FileButton">
+                        <input type="file" id="file-uploader" data-target="file-uploader" accept=".pdf,image/*" multiple="multiple" hidden="true" />
+                        <a href="#" class="icon-add" onclick="$('#file-uploader').click()"></a>
+                    </div>
+
+                    </p>
+                    <div id="FileList" style="padding-left:10px"></div>
+                </div>e
+
+                <div data-options="region:'south',split:false" style="text-align:center;padding:2px;height:36px">
+                    <a id="Save"></a>
+                    <a id="Clear"></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div data-options="region:'east',split:true" style="width:60%"></div>
+</div>
+
+
+<script type="text/javascript">
+    var R = API('V_CreateForm/GetForms');
+    var FormSID = '';
+    console.log(R);
+    $.each(R, function (ind, obj) {
+        obj.text = obj.NAME;
+    })
+
+    $('#Save').linkbutton({
+        text: '保存',
+        iconCls: 'icon-save',
+        width: 120,
+        onClick: function (obj) {
+
+            //取得附加檔案
+            let form = new FormData();
+            $.each(document.querySelector('#file-uploader').files, function (ind, obj) {
+                form.append('File' + ind, obj);
+            })
+
+            //取得資料訊息
+            var node = $('#Forms').tree('getSelected');
+            var _items = [];
+            $.each(node.Items, function (ind, obj) {
+                var _val = '';
+                switch (obj.CONTYPE) {
+                    case 'Number':
+                        _val = $('#' + node.CODE + obj.SID).numberbox('getValue');
+                        break;
+                    case 'Date':
+                        _val = $('#' + node.CODE + obj.SID).datebox('getText');
+                        var t = Date.parse(_val);
+                        if (isNaN(t)) {
+                            ErrorMsg('[' + obj.NAME + ']日期解析失敗，請確認日期格式!!');
+                            return;
+                        };
+                        break;
+                    case 'Time':
+                        _val = $('#' + node.CODE + obj.SID).datetimebox('getText');
+                        var t = Date.parse(_val);
+                        if (isNaN(t)) {
+                            ErrorMsg('[' + obj.NAME + ']時間解析失敗，請確認時間格式!!');
+                            return;
+                        };
+                        break;
+                    case 'Combobox':
+                        if (!CheckComboboxItem([$('#' + node.CODE + obj.SID)])) {
+                            return;
+                        }
+                        _val = $('#' + node.CODE + obj.SID).combobox('getValue');
+                        break;
+                    default:
+                        _val = $('#' + node.CODE + obj.SID).textbox('getValue');
+                        break;
+                }
+
+                if (obj.REQUIRED && _val == '') {
+                    ErrorMsg('[' + obj.NAME + ']不得為空!');
+                    return;
+                }
+
+                _items.push({ M_FORMSET_ID: obj.M_FORMSET_ID, SID: obj.SID, Value: _val });
+            })
+            var _FormData = { SID: node.SID, Items: _items, UID: UserInfo.SID };
+            //加載form一同傳遞
+            form.append('FormData', JSON.stringify(_FormData));
+
+            var R = $.ajax({
+                url: './V_CreateForm/Create',
+                data: form,
+                type: 'Post',
+                contentType: false,
+                processData: false,
+                async: false
+            });
+
+            if (R.status == 200) {
+                console.log(R);
+                $.messager.show({
+                    title: '系統提示',
+                    msg: node.NAME + '(' + R.responseJSON.CODE + ')創建成功!',
+                    showType: 'slide',
+                    timeout: 2000,
+                    style: {
+                        right: '',
+                        top: document.body.scrollTop + document.documentElement.scrollTop,
+                        bottom: ''
+                    }
+                });
+            }
+            else {
+                ErrorMsg(R.responseText);
+            }
+            return;
+        }
+    });
+
+    //加載編輯視𥧥離開控件
+    $('#Clear').linkbutton({
+        text: '離開',
+        iconCls: 'icon-exit',
+        width: 120,
+        onClick: function (obj) { $('#MainEdit').dialog('close'); }
+    });
+
+    $('#Forms').tree({
+        data: R,
+        onClick: function (node) {
+            $('#FormLayout').show();
+            //產生表單
+            var tmpHtml = '';
+            //產生Html
+            $.each(node.Items, function (ind, obj) {
+                var c = { field: obj.ColName, title: obj.text, width: obj.width, align: obj.align, hidden: obj.Show };
+                if (obj.UI == 'Combobox') {
+                    c.formatter = function (value, row, index) {
+                        var _Array = Enumerable.from(obj.Source).select().where(o => o.id == value).toArray();
+                        if (_Array.length == 0) {
+                            return value;
+                        } else {
+                            return Enumerable.from(obj.Source).select().where(o => o.id == value).toArray()[0].text;
+                        }
+
+                    };
+                }
+                //tmpCol.push(c);
+
+                tmpHtml += '<input id="' + node.CODE + obj.SID + '" name="' + node.CODE + obj.SID + '"/></p>';
+            })
+            $('#FormPnl').html(tmpHtml);
+            //加載UI控件
+            $.each(node.Items, function (ind, obj) {
+                switch (obj.CONTYPE) {
+                    case 'Number':
+                        $('#' + node.CODE + obj.SID).numberbox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: obj.Readonly })
+
+                        break;
+                    case 'Date':
+                        $('#' + node.CODE + obj.SID).datebox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: obj.Readonly })
+                        break;
+                    case 'Time':
+                        $('#' + node.CODE + obj.SID).datetimebox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: obj.Readonly })
+                        break;
+                    case 'Combobox':
+                        $('#' + node.CODE + obj.SID).combobox({
+                            label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: obj.Readonly,
+                            valueField: 'id', textField: 'text', data: API('Public/GetDataSourceBySID', { SID: obj.SOURCE })
+                        })
+                        //ConboboxList.push($('#' + node.CODE + obj.SID));  "filebox"
+                        break;
+                    case 'filebox':
+                        $('#' + node.CODE + obj.SID).filebox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: obj.Readonly })
+                        break;
+                    default:
+                        $('#' + node.CODE + obj.SID).textbox({ label: obj.NAME, width: '100%', required: obj.REQUIRED, readonly: obj.Readonly })
+                        break;
+                }
+
+            })
+
+            const fileUploader = document.querySelector('#file-uploader');
+
+            fileUploader.addEventListener('change', (e) => {
+                console.log(e.target.files); // get file object
+                $.each(e.target.files, function (ind, obj) {
+                    $('#FileList').append(obj.name + '</p>')
+                })
+                $('#L').layout('panel', 'center').panel({ title: '附檔(共' + e.target.files.length + '個檔案!)' })
+
+            });
+
+            $('#pnl').panel({ title: node.NAME });
+
+            $('#pnl').panel('open');
+
+            fileUploader.value = '';
+            //$('#L').layout('panel', 'center').panel({ title: '附檔' })
+
+            $('#FileList').html('')
+            $(window).resize();
+        }
+    });
+
+    $('#pnl').panel({ fit: true, closed: true })
+
+</script>

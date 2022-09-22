@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C59FF3B6-CFF3-4A98-8913-80554BBFF629}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>CustService</RootNamespace>
+    <AssemblyName>CustService</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="DBHelpers, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\DBHelpers.1.1.0.0\lib\net45\DBHelpers.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CustObjs\tb\H_ATTREC_LOG.cs" />
+    <Compile Include="CustObjs\tb\M_FORMSET.cs" />
+    <Compile Include="CustObjs\tb\M_FORMSETDTL.cs" />
+    <Compile Include="CustObjs\tb\M_HOLDRESON.cs" />
+    <Compile Include="CustObjs\tb\M_OPER.cs" />
+    <Compile Include="CustObjs\tb\M_PROD.cs" />
+    <Compile Include="CustObjs\tb\M_ROUTE.cs" />
+    <Compile Include="CustObjs\tb\M_ROUTEDTL.cs" />
+    <Compile Include="CustObjs\tb\M_SIGNOWNER.cs" />
+    <Compile Include="CustObjs\tb\M_SIGNOWNERDTL.cs" />
+    <Compile Include="CustObjs\tb\W_FORMDTL.cs" />
+    <Compile Include="CustObjs\tb\W_FORMFILE.cs" />
+    <Compile Include="CustObjs\tb\W_FORMMAIN.cs" />
+    <Compile Include="CustObjs\tb\W_FORMSIGN.cs" />
+    <Compile Include="CustObjs\tb\W_HOLDCONTROL.cs" />
+    <Compile Include="CustObjs\tb\W_WIPLOT.cs" />
+    <Compile Include="CustObjs\tb\W_WO.cs" />
+    <Compile Include="CustObjs\view\B_MainDtl.cs" />
+    <Compile Include="CustObjs\view\V_FormInfo.cs" />
+    <Compile Include="CustObjs\view\V_FormSet.cs" />
+    <Compile Include="CustObjs\view\V_HoldControlInfo.cs" />
+    <Compile Include="CustObjs\view\V_HoldResonInfo.cs" />
+    <Compile Include="CustObjs\view\V_RouteDtl.cs" />
+    <Compile Include="CustObjs\view\V_WIPLotInfo.cs" />
+    <Compile Include="CustObjs\view\V_WOInfo.cs" />
+    <Compile Include="CustRule\AttRule.cs" />
+    <Compile Include="CustRule\Form_Rule.cs" />
+    <Compile Include="CustRule\Hold_Rule.cs" />
+    <Compile Include="CustRule\Route_Rule.cs" />
+    <Compile Include="CustRule\WIP_CheckRule.cs" />
+    <Compile Include="CustRule\WIP_Rule.cs" />
+    <Compile Include="CustRule\WO_Rule.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Svc\BaseExt.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SysService\SysService.csproj">
+      <Project>{512d39d8-ca4e-4edd-9cc9-031239021306}</Project>
+      <Name>SysService</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

@@ -1,0 +1,167 @@
+﻿
+
+
+<div id="Pnl_FrmList" class="easyui-navpanel">
+    <header>
+        <div class="m-toolbar">
+            <span id="FunName" class="m-title">考勤登記</span>
+            <a class="easyui-linkbutton" style="position: absolute; float: left; right: 5px" plain="true" outline="true" onclick="GoMenu()">返回</a>
+        </div>
+    </header>
+
+    <div id="clockContainer">
+        <div class="clock">
+            @*<div class="days">
+                    <span>Sun</span>
+                    <span>Mon</span>
+                    <span>Tue</span>
+                    <span>Wed</span>
+                    <span>Thu</span>
+                    <span>Fri</span>
+                    <span>Sat</span>
+                </div>*@
+            <div class="num">
+                <span class="cell1"></span>
+                <span class="cell2"></span>
+                <span class="cell3"></span>
+                <span class="cell4"></span>
+                <span class="cell5"></span>
+                <span class="cell6"></span>
+                <span class="cell7"></span>
+                <span class="cell8"></span>
+            </div>
+            <div class="num">
+                <span class="cell1"></span>
+                <span class="cell2"></span>
+                <span class="cell3"></span>
+                <span class="cell4"></span>
+                <span class="cell5"></span>
+                <span class="cell6"></span>
+                <span class="cell7"></span>
+                <span class="cell8"></span>
+            </div>
+            <div class="dot"></div>
+            <div class="num">
+                <span class="cell1"></span>
+                <span class="cell2"></span>
+                <span class="cell3"></span>
+                <span class="cell4"></span>
+                <span class="cell5"></span>
+                <span class="cell6"></span>
+                <span class="cell7"></span>
+                <span class="cell8"></span>
+            </div>
+            <div class="num">
+                <span class="cell1"></span>
+                <span class="cell2"></span>
+                <span class="cell3"></span>
+                <span class="cell4"></span>
+                <span class="cell5"></span>
+                <span class="cell6"></span>
+                <span class="cell7"></span>
+                <span class="cell8"></span>
+            </div>
+            <div class="dot"></div>
+            <div class="num">
+                <span class="cell1"></span>
+                <span class="cell2"></span>
+                <span class="cell3"></span>
+                <span class="cell4"></span>
+                <span class="cell5"></span>
+                <span class="cell6"></span>
+                <span class="cell7"></span>
+                <span class="cell8"></span>
+            </div>
+            <div class="num">
+                <span class="cell1"></span>
+                <span class="cell2"></span>
+                <span class="cell3"></span>
+                <span class="cell4"></span>
+                <span class="cell5"></span>
+                <span class="cell6"></span>
+                <span class="cell7"></span>
+                <span class="cell8"></span>
+            </div>
+            @*<div class="format">
+                    <span>24H</span>
+                    <span>AM</span>
+                    <span>PM</span>
+                </div>*@
+        </div>
+        @*<div class="switchString">
+                <div class="pullRing"></div>
+            </div>*@
+    </div>
+    <div style="text-align:center">
+        <a id="AttRec" style="margin-bottom:5vw">登記</a>
+    </div>
+    <div id="dg"></div>
+</div>
+
+<link href="~/Scripts/TimeStyle.css" rel="stylesheet" />
+
+<script type="text/javascript">
+
+
+    $(function () {
+        $('#AttRec').linkbutton({
+            width: '80%', height: 50,
+            onClick: function () {
+                var R = API('M_AttFun/AttSign', { Token: UserInfo.TOKEN })
+                if (!R) { Msg('登記完成!') }
+                $('#dg').datagrid('loadData',R)
+            }
+        })
+
+        $('#dg').datagrid({
+            title: '考勤記錄',
+            singleSelect: true,
+            height: 350,
+            columns: [
+                [
+                    { field: 'NAME', title: '姓名', width: 100 },
+                    { field: 'UDT', title: '登記時間', width: 200 }
+                ]
+            ],
+            data: API('M_AttFun/GetAttLog', { UID: UserInfo.SID })
+        })
+
+        var R = API('UserManage/CheckUserLocation', { Token: UserInfo.TOKEN })
+        if (!R) {
+            $('#AttRec').linkbutton('disable');
+        };
+
+
+        var digElemArr = document.querySelectorAll('div.num');
+
+        //var dayElemArr = document.querySelectorAll('div.days > span');
+        //var lightsOut = false;
+
+        function setTime() {
+            var currentTimeArr = /\s(\d)(\d)\:(\d)(\d)\:(\d)(\d)\s/.exec(new Date().toString());
+            for (var i = 1; i < currentTimeArr.length; i++) {
+                digElemArr[i - 1].setAttribute('class', 'num digit' + currentTimeArr[i])
+            }
+        }
+        setTime();
+        setInterval(setTime, 1000);
+        document.body.classList.add('lightsOut');
+        document.querySelector('div.clock').classList.add('clockLightsOut');
+
+    });
+
+    //(function () {
+
+    //    ////document.querySelector('div.switchString').classList.add('switchStringDarkened');
+    //    //lightsOut = true;
+    //    //window.localStorage.setItem('ifLightsOut', true);
+
+    //    //if (window.localStorage.getItem('ifLightsOut') === 'true') {
+    //    //    document.getElementsByClassName('pullRing')[0].click();
+    //    //}
+
+
+    //})();
+
+
+</script>

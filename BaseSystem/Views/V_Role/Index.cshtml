@@ -1,0 +1,529 @@
+﻿<div id="_layout" class="easyui-layout" fit="true">
+    <div data-options="region:'west'" style="width:320px">
+        @*主表*@
+        <table id="Main"></table>
+        <div id="MainTools">
+            <a id="MainAdd"></a>
+            <label style="color:red">於資料列上擊點滑鼠右鍵可刪除其資料</label>
+        </div>
+    </div>
+
+    <div data-options="region:'center'">
+        @*明細表*@
+        <table id="Dtl"></table>
+        <div id="DtlTools">
+            <a id="DtlAdd"></a>
+            <label style="color:red">於資料列上擊點滑鼠右鍵可刪除其資料</label>
+        </div>
+    </div>
+    @*主表編輯視窗*@
+    <div id="MainEdit" style="width:500px;height:600px">
+        <div class="easyui-layout" fit="true">
+            <div data-options="region:'center'" style="height:520px">
+                <div id="MainEditFrm" class="easyui-panel" fit="true" style="padding:10px">
+
+                </div>
+            </div>
+
+            <div data-options="region:'south',split:false" style="text-align:center;padding:2px;height:36px">
+                <a id="MainSave"></a>
+                <a id="MainExit"></a>
+            </div>
+        </div>
+    </div>
+    @*明細表編輯視窗*@
+    <div id="DtlEdit">
+        <div class="easyui-layout" fit="true">
+            <div data-options="region:'center'" style="height:520px">
+                <div id="DtlEditFrm" class="easyui-panel" fit="true" style="padding:10px">
+
+                </div>
+            </div>
+
+            <div data-options="region:'south',split:false" style="text-align:center;padding:2px;height:36px">
+                <a id="DtlSave"></a>
+                <a id="DtlExit"></a>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+<script>
+    //定義參數
+    var Ctl = 'V_Role';//綁定調用對象
+    var _base = API(Ctl + '/GetFunBase', { UID: UserInfo.SID });//取得頁面基本資料
+    var MainHtml = '';
+    var MainSID = '';//主表SID(供判斷用)
+
+    var ConboboxList = [];//下拉選項控件列表(供檢查用)
+    console.log(_base)
+    InitMain(_base.Main.Base.Col, 'MainEditFrm');//主表
+    Main_Reload();//加載主表資料
+
+    //#region 主表
+    //產生編輯表表物件
+
+    function InitMain(ls, FrmID) {
+        var tmpCol = [];
+        var tmpHtml = '';
+        //產生Html
+        $.each(ls, function (ind, obj) {
+            var c = { field: obj.ColName, title: obj.text, width: obj.width, align: obj.align, hidden: obj.Show };
+            if (obj.UI == 'Combobox') {
+                c.formatter = function (value, row, index) {
+                    var _Array = Enumerable.from(obj.Source).select().where(o => o.id == value).toArray();
+                    if (_Array.length == 0) {
+                        return value;
+                    } else {
+                        return Enumerable.from(obj.Source).select().where(o => o.id == value).toArray()[0].text;
+                    }
+
+                };
+            }
+            tmpCol.push(c);
+
+            tmpHtml += '<input id="' + FrmID + obj.ColName + '" name="' + FrmID + obj.ColName + '"hidden="' + obj.Show + '" /></p>';
+        })
+        $('#' + FrmID).html(tmpHtml);
+        //加載UI控件
+        $.each(ls, function (ind, obj) {
+            if (obj.Show) {
+                $('#' + FrmID + obj.ColName).textbox('hide');
+                return;
+            }
+            switch (obj.UI) {
+                case 'Number':
+                    $('#' + FrmID + obj.ColName).numberbox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+
+                    break;
+                case 'Date':
+                    $('#' + FrmID + obj.ColName).datebox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                    break;
+                case 'Time':
+                    $('#' + FrmID + obj.ColName).datetimebox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                    break;
+                case 'Combobox':
+                    $('#' + FrmID + obj.ColName).combobox({
+                        label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly,
+                        valueField: 'id', textField: 'text', data: obj.Source
+                    })
+                    ConboboxList.push($('#' + obj.ColName));
+                    break;
+                default:
+                    $('#' + FrmID + obj.ColName).textbox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                    break;
+            }
+
+        })
+
+        //加載主表新增按鍵
+        $('#MainAdd').linkbutton({
+            text: '新增',
+            iconCls: 'icon-add',
+            plain: true,
+            onClick: function (obj) {
+                OpenMainEdit('新增', 'CreateMainDatas', null)
+            }
+        });
+
+        //加載主表控件
+        $('#Main').datagrid({
+            title: '',
+            toolbar: '#MainTools',
+            fit: true,
+            columns: [tmpCol],
+            singleSelect: true,
+            onLoadSuccess: function (data) {
+            },
+            onDblClickRow: function (ind, row) {
+                OpenMainEdit('修改', 'UpdateMainDatas', row)
+                $.each(_base.Main.Base.Col, function (ind, obj) {
+                    var val = row[obj.ColName];
+                    console.log(val)
+                    if (obj.Show) {
+                        $('#MainEditFrm' + obj.ColName).text(val);
+                    } else {
+                        if (obj.UI == 'Combobox') {
+                            $('#' + FrmID + obj.ColName).combobox('select', val);
+                        } else {
+                            $('#' + FrmID + obj.ColName).textbox('setText', val);
+                        }
+                    }
+                })
+            },
+            onClickRow: function (ind, row) {
+                Dtl_Reload();
+                $('#DtlAdd').linkbutton('enable');
+                //$('#MD_Col').datagrid('selectRow', 0);
+            },
+            onRowContextMenu: function (e, ind, row) {
+                e.preventDefault()
+                var d = '';
+                var data = [];
+                for (var key in row) {
+                    if (Object.prototype.hasOwnProperty.call(row, key)) { // filter
+                        d += key + ':' + row[key] + '<br/>'
+                        data.push({ Name: key, Value: row[key] });
+                    }
+                }
+
+                $.messager.confirm('確認視窗', '確認刪除該筆資料?<br/><br/><br/>' + d, function (r) {
+                    if (r) {
+                        var R = API(Ctl + '/DeleteMainDatas', { data: JSON.stringify(data) });
+                        if (!R) { return; }
+                        $.messager.show({
+                            title: '系統提示',
+                            msg: '刪除成功',
+                            showType: 'slide',
+                            style: {
+                                right: '',
+                                top: document.body.scrollTop + document.documentElement.scrollTop,
+                                bottom: ''
+                            }
+                        });
+                        Main_Reload();
+                        $('#Dtl').datagrid('loadData', []);
+                    }
+                });
+            }
+        });
+
+        //加載主表視窗控件
+        $('#MainEdit').dialog({ closed: true });
+
+        //加載編輯視𥧥保存控件
+        $('#MainSave').linkbutton({
+            text: '保存',
+            iconCls: 'icon-save',
+            width: 120,
+            onClick: function (obj) {
+                //檢查Combobox項目是否於選項內
+                //var CheckCB = CheckComboboxItem([$('#MD_CODE')])
+                //if (!CheckCB) { return; }
+
+                //檢查必填項是否為空&取得表單資料
+                var d = [];
+                $.each(_base.Main.Base.Col, function (ind, obj) {
+                    if (!obj.Show) {
+                        if (!$('#MainEditFrm' + obj.ColName).textbox('isValid')) {
+                            ErrorMsg('參數名稱不得為空!');
+                            return;
+                        }
+                        if (obj.UI == 'Combobox') {
+                            d.push({ Name: obj.ColName, Value: $('#' + FrmID + obj.ColName).textbox('getValue') });
+                        } else {
+                            d.push({ Name: obj.ColName, Value: $('#' + FrmID + obj.ColName).textbox('getText') });
+                        }
+                    } else {
+                        d.push({ Name: obj.ColName, Value: $('#MainEditFrm' + obj.ColName).text() });
+                    }
+                });
+                console.log(d);
+                var R = API(Ctl + '/' + $('#MainEdit').dialog('options').ActionType, { data: JSON.stringify(d) })//提交後台
+                if (!R) { return; }
+
+                Main_Reload();
+
+                $.messager.show({
+                    title: '系統提示',
+                    msg: $('#MainEdit').dialog('options').title + '成功!',
+                    showType: 'slide',
+                    timeout: 2000,
+                    style: {
+                        right: '',
+                        top: document.body.scrollTop + document.documentElement.scrollTop,
+                        bottom: ''
+                    }
+                });
+
+                if ($('#MainEdit').dialog('options').title == '修改') {
+                    $('#MainEdit').panel('close');
+                } else {
+                    ClearMainEdit();
+                }
+            }
+        });
+
+        //加載編輯視𥧥離開控件
+        $('#MainExit').linkbutton({
+            text: '離開',
+            iconCls: 'icon-exit',
+            width: 120,
+            onClick: function (obj) { $('#MainEdit').dialog('close'); }
+        });
+
+    }
+
+    //主表使用方法
+    //開啟編輯視窗
+    function OpenMainEdit(tit, action, row) {
+        $('#MainEdit').dialog({
+            title: tit,
+            ActionType: action
+        });
+        $('#MainEdit').panel('open');
+
+        if (tit == '新增') {
+            MainSID = '';
+            ClearMainEdit();
+        } else {
+            MainSID = row.SID;
+        }
+    }
+
+    //清除編輯視窗
+    function ClearMainEdit() {
+        $.each(_base.Main.Base.Col, function (ind, obj) {
+            if (obj.Show) {
+                $('#MainEditFrm' + obj.ColName).text('');
+            } else {
+                $('#MainEditFrm' + obj.ColName).textbox('setText', '');
+            }
+        });
+    }
+
+    //加載主表資料
+    function Main_Reload() {
+        var R = API(Ctl + '/GetMainDatas', {});
+        $('#Main').datagrid('loadData', R);
+    }
+    //#endregion
+
+    //#region 明細表
+    InitDtl(_base.Dtl.Base.Col, 'DtlEditFrm');//明細表
+    function InitDtl(ls, FrmID) {
+        var tmpCol = [];
+        var tmpHtml = '';
+        //產生Html
+        $.each(ls, function (ind, obj) {
+            var c = { field: obj.ColName, title: obj.text, width: obj.width, align: obj.align, hidden: obj.Show };
+            if (obj.UI == 'Combobox') {
+                c.formatter = function (value, row, index) {
+                    var _Array = Enumerable.from(obj.Source).select().where(o => o.id == value).toArray();
+                    if (_Array.length == 0) {
+                        return value;
+                    } else {
+                        return Enumerable.from(obj.Source).select().where(o => o.id == value).toArray()[0].text;
+                    }
+
+                };
+            }
+            tmpCol.push(c);
+
+            tmpHtml += '<input id="' + FrmID + obj.ColName + '" name="' + FrmID + obj.ColName + '"hidden="' + obj.Show + '" /></p>';
+        })
+        $('#' + FrmID).html(tmpHtml);
+
+        //加載UI控件
+        $.each(ls, function (ind, obj) {
+            if (obj.Show) {
+                $('#' + FrmID + obj.ColName).textbox('hide');
+                return;
+            }
+            switch (obj.UI) {
+                case 'Number':
+                    $('#' + FrmID + obj.ColName).numberbox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                    break;
+                case 'Date':
+                    $('#' + FrmID + obj.ColName).datebox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                    break;
+                case 'Time':
+                    $('#' + FrmID + obj.ColName).datetimebox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                    break;
+                case 'Combobox':
+                    $('#' + FrmID + obj.ColName).combobox({
+                        label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly,
+                        valueField: 'id', textField: 'text', data: obj.Source
+                    })
+                    
+                    ConboboxList.push($('#' + obj.ColName));
+                    break;
+                default:
+                    $('#' + FrmID + obj.ColName).textbox({ label: obj.text, width: 250, required: obj.Required, readonly: obj.Readonly })
+                    break;
+            }
+
+        })
+
+        //加載明細表新增按鍵
+        $('#DtlAdd').linkbutton({
+            text: '新增',
+            iconCls: 'icon-add',
+            plain: true,
+            disabled: true,
+            onClick: function (obj) {
+                OpenDtlEdit('新增', 'CreateDtlDatas', null)
+            }
+        });
+
+        //加載明細表控件
+        $('#Dtl').datagrid({
+            title: '',
+            toolbar: '#DtlTools',
+            fit: true,
+            columns: [tmpCol],
+            singleSelect: true,
+            onLoadSuccess: function (data) {
+            },
+            onDblClickRow: function (ind, row) {
+                OpenDtlEdit('修改', 'UpdateDtlDatas', row)
+                $.each(_base.Dtl.Base.Col, function (ind, obj) {
+                    var val = row[obj.ColName];
+                    console.log(val)
+                    if (obj.Show) {
+                        $('#' + FrmID + obj.ColName).text(val);
+                    } else {
+                        if (obj.UI == 'Combobox') {
+                            $('#' + FrmID + obj.ColName).combobox('select', val);
+                        } else {
+                            $('#' + FrmID + obj.ColName).textbox('setText', val);
+                        }
+                    }
+                })
+            },
+            //onClickRow: function (ind, row) {
+            //    MD_Col_Load(row.CODE);
+            //    $('#MD_Col').datagrid('selectRow', 0);
+            //},
+            onRowContextMenu: function (e, ind, row) {
+                e.preventDefault()
+                var d = '';
+                var data = [];
+                for (var key in row) {
+                    if (Object.prototype.hasOwnProperty.call(row, key)) { // filter
+                        d += key + ':' + row[key] + '<br/>'
+                        data.push({ Name: key, Value: row[key] });
+                    }
+                }
+
+                $.messager.confirm('確認視窗', '確認刪除該筆資料?<br/><br/><br/>' + d, function (r) {
+                    if (r) {
+                        var R = API(Ctl + '/DeleteDtlDatas', { data: JSON.stringify(data) });
+                        if (!R) { return; }
+                        $.messager.show({
+                            title: '系統提示',
+                            msg: '刪除成功',
+                            showType: 'slide',
+                            style: {
+                                right: '',
+                                top: document.body.scrollTop + document.documentElement.scrollTop,
+                                bottom: ''
+                            }
+                        });
+                        Dtl_Reload();
+                    }
+                });
+            }
+        });
+
+        //加載明細表視窗控件
+        $('#DtlEdit').dialog({ closed: true });
+
+        //加載編輯視𥧥保存控件
+        $('#DtlSave').linkbutton({
+            text: '保存',
+            iconCls: 'icon-save',
+            width: 120,
+            onClick: function (obj) {
+                //檢查Combobox項目是否於選項內
+                //var CheckCB = CheckComboboxItem([$('#MD_CODE')])
+                //if (!CheckCB) { return; }
+
+                //檢查必填項是否為空&取得表單資料
+                var d = [];
+                d.push({ Name: 'MainSID', Value: $('#Main').datagrid('getSelected').SID });
+                $.each(_base.Dtl.Base.Col, function (ind, obj) {
+                    if (!obj.Show) {
+                        if (!$('#' + FrmID + obj.ColName).textbox('isValid')) {
+                            ErrorMsg('參數名稱不得為空!');
+                            return;
+                        }
+                        if (obj.UI == 'Combobox') {
+                            d.push({ Name: obj.ColName, Value: $('#' + FrmID + obj.ColName).textbox('getValue') });
+                        } else {
+                            d.push({ Name: obj.ColName, Value: $('#' + FrmID + obj.ColName).textbox('getText') });
+                        }
+                    } else {
+                        d.push({ Name: obj.ColName, Value: $('#' + FrmID + obj.ColName).text() });
+                    }
+                });
+                console.log(d);
+                var R = API(Ctl + '/' + $('#DtlEdit').dialog('options').ActionType, { data: JSON.stringify(d) })//提交後台
+                if (!R) { return; }
+
+                Dtl_Reload();
+
+                $.messager.show({
+                    title: '系統提示',
+                    msg: $('#DtlEdit').dialog('options').title + '成功!',
+                    showType: 'slide',
+                    timeout: 2000,
+                    style: {
+                        right: '',
+                        top: document.body.scrollTop + document.documentElement.scrollTop,
+                        bottom: ''
+                    }
+                });
+
+                if ($('#DtlEdit').dialog('options').title == '修改') {
+                    $('#DtlEdit').panel('close');
+                } else {
+                    ClearDtlEdit();
+                }
+            }
+        });
+
+        //加載編輯視𥧥離開控件
+        $('#DtlExit').linkbutton({
+            text: '離開',
+            iconCls: 'icon-exit',
+            width: 120,
+            onClick: function (obj) { $('#DtlEdit').dialog('close'); }
+        });
+
+    }
+
+    //明細表使用方法
+    //開啟編輯視窗
+    function OpenDtlEdit(tit, action, row) {
+        $('#DtlEdit').dialog({
+            title: tit,
+            ActionType: action
+        });
+        $('#DtlEdit').panel('open');
+
+        if (tit == '新增') {
+            MainSID = '';
+            ClearDtlEdit();
+        } else {
+            MainSID = row.SID;
+        }
+    }
+
+    //清除編輯視窗
+    function ClearDtlEdit() {
+        $.each(_base.Dtl.Base.Col, function (ind, obj) {
+            if (obj.Show) {
+                $('#DtlEditFrm' + obj.ColName).text('');
+            } else {
+                $('#DtlEditFrm' + obj.ColName).textbox('setText', '');
+            }
+        });
+    }
+
+    //加載明細表資料
+    function Dtl_Reload() {
+        var Main = $('#Main').datagrid('getSelected');
+        var _SID = '';
+        if (Main != null) { _SID = $('#Main').datagrid('getSelected').SID }
+        var R = API(Ctl + '/GetDtlDatas', { SID: _SID });
+        console.log(R);
+        $('#Dtl').datagrid('loadData', R);
+    }
+    //#endregion
+
+</script>
+
+

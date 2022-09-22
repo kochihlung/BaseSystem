@@ -1,0 +1,70 @@
+﻿
+@{
+    ViewBag.Title = "Menu";
+    Layout = "~/Views/MobilePage/mb_Base.cshtml";
+}
+
+<div class="easyui-navpanel">
+    <header>
+        <div class="m-toolbar">
+            <span class="m-title">功能選單</span>
+        </div>
+    </header>
+    <ul id="list" class="m-list">
+        <li onclick="openit(this)">
+            <img class="list-image" src="~/Scripts/EasyUI/themes/icons/pencil.png" />
+            <div class="list-header">表單簽核</div>
+        </li>
+        <li onclick="openit(this)">
+            <img class="list-image" src="~/Scripts/EasyUI/themes/icons/search.png" />
+            <div class="list-header">表單查詢</div>
+        </li>
+    </ul>
+</div>
+
+<div id="p2" class="easyui-navpanel">
+    <div id="FunPnl" style="text-align:center">
+    
+    </div>
+</div>
+
+
+
+<style scoped>
+    .panel-header {
+        height: 42px;
+        font-size: 24px;
+    }
+
+    #list .list-image {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        margin-right: 5px;
+        float: left;
+    }
+
+    #list .list-header {
+        font-size: 26px;
+        font-weight: bold;
+        line-height: 36px;
+    }
+
+    #list .list-content {
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+</style>
+
+
+<script>
+    function openit(target) {
+        var text = $(target).text();
+        console.log('debug')
+        console.log($(target))
+        $.mobile.go('#p2');
+        
+        $('#FunPnl').navpanel({fit:true, href:'/MobilePage/SignForm'})
+    }
+
+</script>

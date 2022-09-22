@@ -1,0 +1,105 @@
+﻿
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+
+
+    @Styles.Render("~/Scripts/EasyUI/themes/gray/easyui.css")
+    @Styles.Render("~/Scripts/EasyUI/themes/icon.css")
+    @Styles.Render("~/Scripts/EasyUI/themes/color.css")
+
+    @Scripts.Render("~/Scripts/EasyUI/jquery.min.js")
+    @Scripts.Render("~/Scripts/EasyUI/jquery.easyui.min.js")
+    @Scripts.Render("~/Scripts/EasyUI/jquery.easyui.mobile.js")
+    @Scripts.Render("~/Scripts/EasyUI/locale/easyui-lang-zh_TW.js")
+    @Scripts.Render("~/Scripts/linq.min.js")
+    @Scripts.Render("~/Scripts/echarts/echarts.min.js")
+    <style>
+        .panel-header, .panel-body {
+            border-color: #c3c3c3;
+        }
+
+        .panel-body {
+            background-color: #FCFCFC;
+        }
+
+        .easyui-dialog pop {
+        }
+
+        .errorMsg {
+            color: red;
+            font-weight: bold;
+            background-color: lightgoldenrodyellow;
+        }
+    </style>
+
+</head>
+<body>
+    @RenderBody()
+    <script>
+        var UserInfo = null;
+    </script>
+</body>
+</html>
+<script>
+    var FunName = "";
+    var UserToken = 'Empty';
+    var UserInfo = null;
+
+    function API(url, obj) {
+        var _R = $.ajax({
+            url: './' + url,
+            data: obj,
+            type: 'Post',
+            dataType: 'json',
+            async: false
+        });
+
+        if (_R.status == 200) {
+            return _R.responseJSON;
+        }
+        else {
+            ErrorMsg(_R.responseText);
+            return false;
+        }
+    }
+
+    function ErrorMsg(msg) {
+
+        $.messager.show({
+            title: '系統提示',
+            msg: msg,
+            showType: 'slide',
+            timeout: 2000,
+            style: {
+                right: '',
+                top: document.body.scrollTop + document.documentElement.scrollTop,
+                bottom: ''
+            },
+            bodyCls: 'errorMsg',
+            headerCls: 'errorMsg'
+        });
+    }
+
+    function Msg(msg) {
+        $.messager.show({
+            title: '系統提示',
+            msg: msg,
+            showType: 'slide',
+            timeout: 2000,
+            style: {
+                right: '',
+                top: document.body.scrollTop + document.documentElement.scrollTop,
+                bottom: ''
+            }
+        });
+    }
+</script>

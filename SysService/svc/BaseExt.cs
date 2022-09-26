@@ -551,8 +551,19 @@ namespace SysService.svc
             }
             return Result;
         }
+        public static bool ToBool(this int x)
+        {
+            if(x == 1)
+            {
+                return true;
+            }else
+            {
+                return false;
+            }
+        }
 
-        public static string To32Str(this int Nbr, int ft = 0)
+
+            public static string To32Str(this int Nbr, int ft = 0)
         {
             string Result = "";
 

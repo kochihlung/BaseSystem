@@ -1004,6 +1004,21 @@ namespace SysService.Rule
             return SelectBySID(Name, _SID);
         }
 
+        public void SetPwd(List<ModlingData> ls)
+        {
+            var db = new DBHelper("MSDB");
+            string SqlCmd = string.Format("select * from S_USERINFO where code='{0}'", ls.Find(o => o.Name == "CODE").Value);
+            var r = db.ExecuteObject<V_UserInfo>(SqlCmd);
+            if (r.PWD == ls.Find(o => o.Name == "PWD").Value)
+            {
+                
+            }
+            else
+            {
+                ls.Find(o => o.Name == "PWD").Value = ls.Find(o => o.Name == "PWD").Value.DESEncrypt();
+            }
+        }
+
         public Dictionary<string, object> UpdateByDictionary(string Name, Dictionary<string, string> dic)
         {
             List<string> _lsColumn = new List<string>();

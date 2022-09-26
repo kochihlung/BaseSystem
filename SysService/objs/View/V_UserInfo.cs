@@ -8,7 +8,6 @@ namespace SysService.objs.View
 {
     public class V_UserInfo : SysService.objs.tb.S_USERINFO
     {
-        public bool ISPASS { get; set; }
         public V_UserInfo()
         {
             UserMenu = new List<V_UserMenu>();

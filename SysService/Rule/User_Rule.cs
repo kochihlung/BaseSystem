@@ -188,8 +188,12 @@ namespace SysService.Rule
 
 
             //2.檢查使用者位置是否合法
-            if (Result.LAT > Result.LT.LAT || Result.LAT < Result.RB.LAT) { throw new Exception("所地的位置不合法!無法執行考勤登記"); };
-            if (Result.LON < Result.LT.LON || Result.LON > Result.RB.LON) { throw new Exception("所地的位置不合法!無法執行考勤登記"); };
+            if (!Result.ISPASS.ToBool())
+            {
+                if (Result.LAT > Result.LT.LAT || Result.LAT < Result.RB.LAT) { throw new Exception("所地的位置不合法!無法執行考勤登記"); };
+                if (Result.LON < Result.LT.LON || Result.LON > Result.RB.LON) { throw new Exception("所地的位置不合法!無法執行考勤登記"); };
+            }
+            
 
 
             return Result; ;

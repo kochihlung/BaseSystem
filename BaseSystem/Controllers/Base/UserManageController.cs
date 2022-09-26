@@ -136,22 +136,51 @@ namespace BaseSystem.Controllers
             }
         }
 
-        public ActionResult CreateModlingDatas(string data)
+        string MainTable = "S_USERINFO";
+        public ActionResult GetFunBase()
         {
             try
             {
+                //生成MainDtl物件(直接調用並填入主表名，主表及明細表需依規範命名)
+                var R = new SysService.objs.View.B_MainDtl(MainTable);
+                R.Text = MainTable;
+
+                //調整欄位屬性
+
+                //主表
                 Modling_Rule Rule = new Modling_Rule();
+                R.Main.Base.Col.Where(q => q.ColName == "CODE").ToList().ForEach(o =>
+                {
+                    o.text = "登入帳號";
+                    o.Required = true;
+                });
+                R.Main.Base.Col.Where(q => q.ColName == "NAME").ToList().ForEach(o =>
+                {
+                    o.text = "姓名";
+                    o.Required = true;
+                });
+                R.Main.Base.Col.Where(q => q.ColName == "PWD").ToList().ForEach(o =>
+                {
+                    o.text = "密碼";
+                    o.Required = true;
+                });
+                R.Main.Base.Col.Find(o => o.ColName == "REMARK").text = "備註";
+                R.Main.Base.Col.Find(o => o.ColName == "UDT").Show = true;
+                R.Main.Base.Col.Find(o => o.ColName == "TOKEN").Show = true;
+                R.Main.Base.Col.Find(o => o.ColName == "EXPTIME").Show = true;
+                R.Main.Base.Col.Find(o => o.ColName == "LAT").Show = true;
+                R.Main.Base.Col.Find(o => o.ColName == "LON").Show = true;
+                R.Main.Base.Col.Where(q => q.ColName == "ISPASS").ToList().ForEach(o =>
+                {
+                    o.UI = "Combobox";
+                    o.Source = new ComboboxItem().IsBool();
+                });
 
-                var ls = JsonConvert.DeserializeObject<List<ModlingData>>(data);
+            
 
-                ls.Find(o => o.Name == "PWD").Value = ls.Find(o => o.Name == "PWD").Value.DESEncrypt();
+                Rule.OverrideModlingSetup(R);
 
-                Dictionary<string, string> _dic = new Dictionary<string, string>();
-                ls.ForEach(o => _dic.Add(o.Name, o.Value));
-
-                var Result = Rule.CreateByDictionary("S_USERINFO", _dic);
-
-                return new JsonNetResult() { Data = Result, ContentType = "Error" };
+                return new JsonNetResult() { Data = R };
             }
             catch (Exception ex)
             {
@@ -161,7 +190,34 @@ namespace BaseSystem.Controllers
             }
         }
 
-        public ActionResult UpdateModlingDatas(string data)
+        /// <summary>
+        /// 取得主表資料
+        /// </summary>
+        /// <param name="Name"></param>
+        /// <returns></returns>
+        public ActionResult GetMainDatas()
+        {
+            try
+            {
+                Modling_Rule Rule = new Modling_Rule();
+
+                return new JsonNetResult() { Data = Rule.GetDatas(MainTable) };
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 294;
+                Response.TrySkipIisCustomErrors = true;
+                return Content(ex.Message);
+            }
+
+        }
+
+        /// <summary>
+        /// 新增主表資料
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public ActionResult CreateMainDatas(string data)
         {
             try
             {
@@ -169,12 +225,43 @@ namespace BaseSystem.Controllers
 
                 var ls = JsonConvert.DeserializeObject<List<ModlingData>>(data);
 
+                Dictionary<string, string> _dic = new Dictionary<string, string>();
                 ls.Find(o => o.Name == "PWD").Value = ls.Find(o => o.Name == "PWD").Value.DESEncrypt();
+                ls.ForEach(o => _dic.Add(o.Name, o.Value));
+                
+             
+
+                var Result = Rule.CreateByDictionary(MainTable, _dic);
+
+                return new JsonNetResult() { Data = Result, ContentType = "Error" };
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 294;
+                Response.TrySkipIisCustomErrors = true;
+                return Content(ex.Message);
+            }
+
+        }
+
+        /// <summary>
+        /// 修改主表資料
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public ActionResult UpdateMainDatas(string data)
+        {
+            try
+            {
+                Modling_Rule Rule = new Modling_Rule();
+
+                var ls = JsonConvert.DeserializeObject<List<ModlingData>>(data);
 
                 Dictionary<string, string> _dic = new Dictionary<string, string>();
+                Rule.SetPwd(ls);//設定密碼加密
                 ls.ForEach(o => _dic.Add(o.Name, o.Value));
 
-                var Result = Rule.UpdateByDictionary("S_USERINFO", _dic);
+                var Result = Rule.UpdateByDictionary(MainTable, _dic);
 
 
                 return new JsonNetResult() { Data = Result };
@@ -188,7 +275,12 @@ namespace BaseSystem.Controllers
 
         }
 
-        public ActionResult DeleteModlingDatas(string data)
+        /// <summary>
+        /// 刪除主表資料
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public ActionResult DeleteMainDatas(string data)
         {
             try
             {
@@ -199,8 +291,7 @@ namespace BaseSystem.Controllers
                 Dictionary<string, string> _dic = new Dictionary<string, string>();
                 ls.ForEach(o => _dic.Add(o.Name, o.Value));
 
-                Rule.DeleteByDictionary("S_USERINFO", _dic);
-
+                Rule.DeleteByDictionary(MainTable, _dic);
 
                 return new JsonNetResult() { Data = "刪除成功" };
             }

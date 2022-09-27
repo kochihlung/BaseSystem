@@ -32,6 +32,7 @@ https://learn.microsoft.com/zh-tw/sql/database-engine/install-windows/install-sq
 
 修改DB地址、名稱、登入帳戶等相關資料
 
-![image](https://user-images.githubusercontent.com/104553653/192427590-17b4fad0-4af3-4125-a77b-8cb2221e73e0.png)
+![image](https://user-images.githubusercontent.com/104553653/192441835-3d1b9569-cb6c-44a5-bd07-26d0e16bf176.png)
+
 
 
